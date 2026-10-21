@@ -1,0 +1,90 @@
+name: claims-system
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: claims-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: claims
+      POSTGRES_USER: claims
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-claims_pwd_change_me}
+      TZ: Asia/Shanghai
+    volumes:
+      - claims_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U claims -d claims"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [claimsnet]
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-https://pypi.tuna.tsinghua.edu.cn/simple}
+        PIP_DEFAULT_TIMEOUT: ${PIP_DEFAULT_TIMEOUT:-120}
+        PIP_RETRIES: ${PIP_RETRIES:-10}
+    image: claims-system:${APP_IMAGE_TAG:-local}
+    container_name: claims-app
+    restart: unless-stopped
+    env_file: [.env]
+    environment:
+      DATABASE_URL: postgresql+psycopg://claims:${POSTGRES_PASSWORD:-claims_pwd_change_me}@db:5432/claims
+      APP_PORT: 8021
+      TZ: Asia/Shanghai
+    ports:
+      - "${APP_PORT:-8021}:8021"
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8021/healthz',timeout=4).read()"]
+      interval: 15s
+      timeout: 6s
+      retries: 5
+      start_period: 25s
+    networks: [claimsnet]
+
+  backup:
+    image: postgres:16-alpine
+    container_name: claims-backup
+    restart: unless-stopped
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:-claims_pwd_change_me}
+      TZ: Asia/Shanghai
+    volumes:
+      - ./data/backups:/backups
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        echo "等待数据库就绪..."
+        until pg_isready -h db -U claims -d claims; do sleep 10; done
+        while true; do
+          TS=$$(date +%Y%m%d_%H%M%S)
+          echo "[$$(date '+%F %T')] 开始备份 -> /backups/claims_$$TS.sql"
+          if pg_dump -h db -U claims -d claims > "/backups/claims_$$TS.sql"; then
+            find /backups -name 'claims_*.sql' -mtime +$${KEEP_DAYS:-30} -delete
+            echo "[$$(date '+%F %T')] 备份完成"
+          else
+            echo "[$$(date '+%F %T')] 备份失败，下次重试"
+          fi
+          sleep $$(( ${BACKUP_INTERVAL_HOURS:-24} * 3600 ))
+        done
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [claimsnet]
+
+volumes:
+  claims_pg:
+    driver: local
+
+networks:
+  claimsnet:
+    driver: bridge

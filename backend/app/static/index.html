@@ -1,0 +1,1881 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>售后登记表</title>
+<style>
+/* 设计语言：冷灰蓝底 + 白卡片 + 蓝主色 + 深海军蓝侧栏 */
+:root{
+  --app-bg:#f5f7fb; --surface:#ffffff; --surface-muted:#f8fafc; --surface-soft:#eef2f7;
+  --border:#e4e9f1; --border-strong:#ccd5e2;
+  --text:#111827; --text-strong:#344054; --text-muted:#667085; --text-soft:#98a2b3;
+  --accent:#2f6fed; --accent-hover:#245fd1; --accent-soft:#eef4ff;
+  --success-soft:#ecfdf3; --success-text:#067647; --success-ring:#abefc6;
+  --warning-soft:#fffaeb; --warning-text:#b54708; --warning-ring:#fedf89;
+  --danger-soft:#fff1f3; --danger-text:#b42318; --danger-ring:#fecdca;
+  --sky-soft:#f0f9ff; --sky-text:#026aa2; --sky-ring:#b9e6fe;
+  --sidebar:#14263d; --sidebar-muted:#9fb0c6; --sidebar-active:#2f6fed;
+  --table-head:#f7f9fc;
+  --card-shadow:0 1px 2px rgb(16 24 40 / 4%);
+  --focus-ring:rgb(47 111 237 / 22%);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+html{height:100%}
+body{background:var(--app-bg);color:var(--text);font:13px/1.55 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;display:flex;height:100%;overflow:hidden}
+
+/* ===== 侧栏 ===== */
+.sidebar{width:196px;flex-shrink:0;background:var(--sidebar);color:#fff;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
+.brand{display:flex;align-items:center;gap:9px;padding:15px 14px 13px}
+.brand-mark{width:30px;height:30px;border-radius:8px;background:var(--sidebar-active);display:flex;align-items:center;justify-content:center;font-weight:600;font-size:14px;flex-shrink:0}
+.brand-name{font-size:13.5px;font-weight:600;letter-spacing:.2px}
+.brand-sub{font-size:10px;color:var(--sidebar-muted);margin-top:1px}
+.nav-group{padding:10px 10px 4px;font-size:10.5px;color:var(--sidebar-muted);letter-spacing:.5px}
+.nav-item{display:flex;align-items:center;gap:9px;margin:1px 8px;padding:7px 10px;border-radius:8px;font-size:12.5px;color:#d5dfee;cursor:pointer;text-decoration:none;transition:background 120ms}
+.nav-item:hover{background:rgb(255 255 255 / 7%)}
+.nav-item.on{background:var(--sidebar-active);color:#fff;font-weight:500}
+.nav-item .ico{width:15px;text-align:center;opacity:.85}
+.nav-foot{margin-top:auto;padding:12px 14px;font-size:10.5px;color:var(--sidebar-muted);border-top:1px solid rgb(255 255 255 / 8%)}
+
+/* ===== 主区 ===== */
+.main{flex:1;min-width:0;display:flex;flex-direction:column;height:100vh;overflow:hidden}
+.topbar{position:sticky;top:0;z-index:20;flex-shrink:0;background:rgb(255 255 255 / 92%);backdrop-filter:blur(10px);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;padding:9px 18px}
+.topbar h1{font-size:14px;font-weight:600;color:var(--text)}
+.topbar .crumb{font-size:11px;color:var(--text-soft)}
+.top-month{display:flex;align-items:center;gap:6px;white-space:nowrap}
+.top-month label{font-size:12px;color:var(--text-muted)}
+.top-month .inp{width:132px}
+.spacer{flex:1}
+.badge{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:2px 9px;font-size:11px;font-weight:500;white-space:nowrap}
+.b-green{background:var(--success-soft);color:var(--success-text);box-shadow:inset 0 0 0 1px var(--success-ring)}
+.b-amber{background:var(--warning-soft);color:var(--warning-text);box-shadow:inset 0 0 0 1px var(--warning-ring)}
+.b-red{background:var(--danger-soft);color:var(--danger-text);box-shadow:inset 0 0 0 1px var(--danger-ring)}
+.b-sky{background:var(--sky-soft);color:var(--sky-text);box-shadow:inset 0 0 0 1px var(--sky-ring)}
+.b-gray{background:var(--surface-soft);color:var(--text-muted);box-shadow:inset 0 0 0 1px var(--border)}
+.content{padding:14px 18px 30px;width:100%;max-width:none;min-width:0}
+/* 固定外壳：页面整体不滚动，只有表格主体区域滚动 */
+#view-board{flex:1;min-height:0;display:flex;flex-direction:column;overflow:auto;padding-bottom:14px}
+#view-stats{flex:1;min-height:0;overflow:auto}
+
+/* ===== 指标卡（MetricCard 风格） ===== */
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(136px,1fr));gap:10px;margin-bottom:14px;flex-shrink:0}
+.metric{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;box-shadow:var(--card-shadow)}
+.metric .lb{font-size:11.5px;color:var(--text-muted)}
+.metric .vl{font-size:20px;font-weight:600;margin-top:4px;font-variant-numeric:tabular-nums;color:var(--text)}
+.metric .vl .unit{font-size:11px;font-weight:400;color:var(--text-soft);margin-left:3px}
+.metric .hint{font-size:10.5px;color:var(--text-soft);margin-top:3px}
+.v-danger{color:var(--danger-text)}.v-success{color:var(--success-text)}.v-warn{color:var(--warning-text)}.v-accent{color:var(--accent)}
+
+/* ===== 工具条 ===== */
+.toolbar{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-bottom:11px;flex-shrink:0}
+.tb-sep{width:1px;height:20px;background:var(--border-strong);margin:0 3px;display:inline-block;flex-shrink:0}
+.tb-act{display:inline-flex;gap:6px;align-items:center}
+.btn{display:inline-flex;align-items:center;gap:5px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 12px;font:inherit;font-size:12px;cursor:pointer;color:var(--text-strong);transition:all 120ms}
+.btn:hover{background:var(--surface-muted);border-color:var(--border-strong)}
+.btn.pri{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn.pri:hover{background:var(--accent-hover)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.sm{padding:3px 9px;font-size:11.5px;border-radius:7px}
+.inp,select.inp{background:#fff;border:1px solid var(--border-strong);border-radius:8px;padding:5px 9px;font:inherit;font-size:12px;color:var(--text);transition:all 120ms}
+.auto-field{background:var(--surface-soft);color:var(--text-muted);border-color:var(--border)}
+.auto-field::placeholder{color:var(--text-soft)}
+.inp:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--focus-ring);outline:none}
+.chk{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--text-muted);cursor:pointer}
+
+/* ===== 表格卡片 ===== */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--card-shadow);overflow:hidden;margin-bottom:13px}
+.card-head{display:flex;align-items:center;gap:9px;padding:11px 14px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.card-head b{font-size:12.5px;font-weight:600;color:var(--text-strong)}
+.tablewrap{overflow-x:auto;overscroll-behavior-x:contain}
+/* 表格卡片撑满剩余高度，只有表格主体（tbody）滚动，表头吸附 */
+#t0card{flex:1;min-height:180px;display:flex;flex-direction:column;margin-bottom:0}
+#t0{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain}
+#dupAlert,#pageUpdateNotice{flex-shrink:0}
+table{border-collapse:collapse;width:100%;font-size:12px}
+th{background:var(--table-head);text-align:left;padding:8px 10px;font-weight:500;font-size:11.5px;color:var(--text-muted);white-space:nowrap;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:5}
+ #t0 th{position:sticky;cursor:grab;user-select:none}#t0 th.dragging{opacity:.45}#t0 th.drop-target{box-shadow:inset 3px 0 var(--accent)}
+ #t0 th .col-resizer{position:absolute;right:-3px;top:0;width:8px;height:100%;cursor:col-resize;z-index:8;touch-action:none}
+ #t0 th .col-resizer:hover,#t0 th .col-resizer.active{background:var(--accent);opacity:.35}
+#t0 th.head-basic{background:#e8f0fc;color:#244b7c}
+#t0 th.head-type{background:#eee6fa;color:#69419b}
+#t0 th.head-money{background:#fff0d4;color:#8c550b}
+#t0 th.head-progress{background:#e2f3ed;color:#21634b}
+#t0 .table-group-row th{font-size:12px;font-weight:700;padding:7px 12px;border-right:3px solid white;cursor:default;top:0}
+#t0 th[data-col]{top:30px;border-right:1px solid rgb(255 255 255 / 65%)}
+#t0 td{overflow:hidden;text-overflow:ellipsis}
+#t0 td .cell{box-sizing:border-box}
+td{padding:0;border-bottom:1px solid var(--border);white-space:nowrap;vertical-align:middle}
+td.t{padding:7px 10px}
+tbody tr:hover{background:var(--surface-muted)}
+.mono{font-family:ui-monospace,Consolas,monospace;font-size:11px;color:var(--text-strong)}
+.cell{border:0;background:transparent;font:inherit;font-size:12px;padding:7px 10px;width:100%;min-width:44px;color:var(--text)}
+.cell:focus{outline:none;box-shadow:inset 0 0 0 2px var(--accent);background:#fff;border-radius:4px}
+td.num .cell{text-align:right;font-variant-numeric:tabular-nums}
+.numtxt{text-align:right;font-variant-numeric:tabular-nums}
+a.link{color:var(--accent);text-decoration:none;font-weight:500}
+a.link:hover{text-decoration:underline}
+.empty{padding:28px;text-align:center;color:var(--text-soft);font-size:12px}
+.g2wrap{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+@media(max-width:900px){.g2wrap{grid-template-columns:1fr}}
+
+/* 弹层 */
+.mask{position:fixed;inset:0;background:rgb(16 24 40 / 34%);display:none;align-items:flex-start;justify-content:center;z-index:1000;padding:30px 16px;overflow:auto}
+.mask.on{display:flex}
+.duplicate-mask{z-index:1250}
+.duplicate-modal{max-width:1280px}
+.duplicate-modal .tablewrap{margin:12px 0}
+.duplicate-modal td{padding:8px 10px;white-space:normal}
+.duplicate-modal td .inp{width:100%;min-width:155px}
+.duplicate-reason{width:100%;min-height:75px;resize:vertical}
+.duplicate-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:12px}
+.duplicate-error{color:var(--danger-text);margin-top:8px;min-height:20px}
+.modal{background:#fff;border-radius:14px;max-width:1280px;width:calc(100vw - 32px);max-height:92vh;overflow:auto;padding:18px 22px;box-shadow:0 12px 32px rgb(16 24 40 / 12%)}
+.modal h2{font-size:14.5px;font-weight:600;margin-bottom:4px;color:var(--text)}
+.frow{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:9px;margin-bottom:9px}
+.lookup-section,.manual-section{border:1px solid var(--border);border-radius:10px;padding:10px 11px;margin:10px 0}
+.lookup-section{background:#eef6ff;border-color:#9ac7ff}
+.lookup-section .section-label{color:#1759a6}
+.auto-section{background:#f3f4f6;border:1px solid #d0d5dd;border-radius:8px;padding:9px 10px}
+.auto-section .section-label{color:#667085}
+.manual-section{background:#fff8ed;border-color:#f3d4a0}
+.manual-section .section-label{color:#8a4b08}
+.section-label{font-size:11.5px;font-weight:600;color:var(--text-strong);margin-bottom:8px}
+.section-label span{font-size:10.5px;color:var(--text-soft);font-weight:400;margin-left:6px}
+.lookup-row{grid-template-columns:repeat(2,minmax(220px,1fr));margin-bottom:0}
+.auto-row{grid-template-columns:repeat(2,minmax(155px,1fr));margin-bottom:0}
+.custom-duty{margin-top:7px}
+.return-key-alert{margin-top:10px;padding:11px 13px;border:2px solid #f04438;border-radius:9px;background:#fff1f0;color:#b42318;font-size:13px;font-weight:600;box-shadow:0 2px 8px rgb(180 35 24 / 12%)}
+.return-key-alert small{display:block;margin-top:3px;font-size:11px;font-weight:400;color:#b42318}
+.goods-panel{margin-top:10px;border-top:1px solid #c9d7ea;padding-top:8px}
+.goods-panel-title{font-size:11.5px;font-weight:600;color:var(--text-strong);margin-bottom:5px}
+.goods-panel table{font-size:11.5px;background:rgb(255 255 255 / 60%)}
+.goods-panel th,.goods-panel td{padding:5px 7px;white-space:normal}
+.fld label{display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px;font-weight:500}
+.fld .inp{width:100%}
+.sec{border-top:1px solid var(--border);padding-top:11px;margin-top:11px}
+.sec h4{font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text-strong);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.detail-layout{display:grid;grid-template-columns:minmax(0,1.75fr) minmax(300px,.75fr);gap:16px;align-items:start}
+.detail-main{min-width:0}
+.detail-group{border:1px solid var(--border);border-radius:12px;padding:11px 12px;margin-bottom:12px;background:#fff}
+.detail-group.order-group{border-color:#b8d3fb;background:linear-gradient(180deg,#f7fbff 0%,#fff 22%)}
+.detail-group.warehouse-group{border-color:#f1d19d;background:linear-gradient(180deg,#fffaf1 0%,#fff 24%)}
+.detail-group.dispute-group{border-color:#d9c5f5;background:linear-gradient(180deg,#fbf8ff 0%,#fff 24%)}
+.detail-group-title{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:var(--text-strong);padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid rgb(148 163 184 / 24%)}
+.detail-group-title span{font-size:10.5px;font-weight:400;color:var(--text-muted)}
+.detail-group-title .group-mark{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px rgb(51 94 234 / 12%)}
+.warehouse-group .group-mark{background:#d97706;box-shadow:0 0 0 4px rgb(217 119 6 / 13%)}
+.dispute-group .group-mark{background:#7f56d9;box-shadow:0 0 0 4px rgb(127 86 217 / 13%)}
+.detail-group.money-group{background:#fffaf1;border-color:#efd3a0}
+.money-group .group-mark{background:#cf8b1c}
+.money-balance{display:flex;align-items:center;gap:8px;border-top:1px solid #ecdcc0;padding-top:10px;color:#7c5921;font-size:12px}.money-balance b{font-size:20px}.money-balance span{margin-left:auto;color:var(--text-muted)}
+.detail-main .frow{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.detail-main .money-group .frow{grid-template-columns:repeat(4,minmax(0,1fr))}
+.detail-main .fld .inp{box-sizing:border-box;min-width:0}
+.detail-main textarea{resize:vertical;min-height:64px}
+.evidence-side{position:static;background:#f8faff;padding:14px;box-shadow:none;min-width:0}
+.responsibility-summary{border-left:4px solid #7f56d9;border-radius:8px;background:#f0eafb;padding:12px 14px;color:#593589;margin-bottom:16px}
+.responsibility-summary span{display:block;font-size:11px}.responsibility-summary strong{display:block;font-size:20px;margin:4px 0}.responsibility-summary small{display:block;line-height:1.7;font-size:11px}
+.evidence-title small{font-size:10px;font-weight:400;color:var(--text-muted);display:block;margin-top:4px}
+.evidence-source-group{border:1px solid #d8e2ee;border-radius:9px;background:white;margin-bottom:10px;overflow:hidden}
+.evidence-source-group h4{margin:0;padding:8px 10px;background:#edf2f9;font-size:12px;color:#35495f;display:flex;justify-content:space-between}.evidence-source-group h4 span{font-weight:400;color:#6e7e92}
+.source-warehouse h4{background:#fff0d4;color:#8c550b}.source-merchant h4{background:#e8f0fc;color:#244b7c}
+.evidence-empty{font-size:11px;color:var(--text-soft);margin:10px}
+.evidence-file{padding:9px 10px;border-top:1px solid #eef1f5}
+.evidence-file-link{border:0;background:none;text-align:left;font:inherit;font-size:12px;color:var(--accent);cursor:pointer;padding:0;overflow-wrap:anywhere;line-height:1.6}
+.evidence-file-link:hover{text-decoration:underline}
+.evidence-file-actions{display:flex;gap:6px;align-items:center;justify-content:space-between;margin-top:6px}.evidence-file-actions select{font-size:10.5px;padding:3px 5px}
+.evidence-source-label{display:block;font-size:11px;color:var(--text-muted);margin-bottom:5px}
+.evidence-side .upload-box>select{width:100%;margin-bottom:6px}.evidence-side .upload-box input[type=file]{width:100%;font-size:11px}
+.evidence-hover{position:fixed;z-index:1900;pointer-events:none;background:#fff;border:1px solid #bfcde0;border-radius:10px;padding:8px;box-shadow:0 10px 40px rgb(16 24 40 / 22%);box-sizing:border-box;color:#667085;font-size:11px}
+.evidence-hover[hidden]{display:none}.evidence-hover img{display:block;max-width:100%;width:auto;height:auto;max-height:min(270px,65vh);margin:auto;object-fit:contain}.evidence-hover>div{text-align:center;padding-top:5px}
+.evidence-viewer{position:fixed;inset:0;z-index:2100;background:rgb(10 18 32 / 94%);display:flex;flex-direction:column}
+.image-viewer-bar{display:flex;align-items:center;gap:8px;padding:12px 18px;background:#fff;flex-shrink:0}.image-viewer-bar span{flex:1;min-width:0;overflow-wrap:anywhere;font-size:13px}
+.image-viewer-stage{flex:1;min-height:0;overflow:auto;display:flex;align-items:center;justify-content:center;padding:18px}.image-viewer-stage img{max-width:100%;max-height:100%;object-fit:contain}
+.evidence-viewer.actual-size .image-viewer-stage{display:block}.evidence-viewer.actual-size img{max-width:none;max-height:none}
+@media(max-width:900px){.detail-main .money-group .frow{grid-template-columns:repeat(2,minmax(0,1fr))}.image-viewer-bar{flex-wrap:wrap}}
+.modal.detail-dialog{max-width:1760px;width:calc(100vw - 32px);padding:16px 18px;max-height:94vh;overflow:hidden}
+.detail-dialog h2{font-size:17px;margin:0 0 12px}
+.detail-layout.three-columns{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.15fr);gap:14px;height:calc(94vh - 116px);align-items:stretch}
+.detail-column{min-width:0;overflow:auto;padding:0 5px 10px 0;scrollbar-gutter:stable}
+.detail-column-heading{position:sticky;top:0;z-index:8;padding:11px 12px;margin:0 0 10px;border-radius:9px;background:#e8f0fc;color:#244b7c;font-weight:700;font-size:14px;border:1px solid #bdd0eb}
+.detail-column-heading small{font-size:10.5px;font-weight:400;display:block;margin-top:3px;color:inherit;opacity:.8}
+.issue-column .detail-column-heading{background:#fff0d4;color:#8c550b;border-color:#ebcc94}
+.responsibility-column .detail-column-heading{background:#eee6fa;color:#69419b;border-color:#d4bdeb}
+.detail-column .frow{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.detail-column .money-group .frow{grid-template-columns:repeat(2,minmax(0,1fr))}
+.detail-column .inp{box-sizing:border-box;min-width:0}
+.detail-column textarea{resize:vertical;min-height:76px}
+.detail-column .autofill{font-size:11px;line-height:1.7;overflow-wrap:anywhere}
+.detail-column .autofill #liveSync{font-size:11px}
+.issue-group{border-color:#efce98;background:#fffcf5}
+.communication-block{margin-top:14px;padding-top:12px;border-top:1px solid #ded2ef}
+.communication-block h4{font-size:13px;color:#593589;margin:0 0 8px}
+.communication-log{max-height:240px;overflow:auto;margin-bottom:10px;display:grid;gap:7px}
+.communication-entry{padding:9px 10px;border:1px solid #d4deef;border-left:3px solid #4d7cdc;background:#f4f8ff;border-radius:7px}
+.communication-entry.warehouse{border-color:#eddbb5;border-left:3px solid #d69721;background:#fff9ec}
+.communication-entry .who{font-size:10.5px;color:#68758b;margin-bottom:4px}.communication-entry .txt{font-size:12px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
+.communication-empty{font-size:11px;color:var(--text-soft);padding:9px;background:#f7f8fb;border-radius:7px}
+.communication-compose{display:grid;grid-template-columns:1fr auto;gap:8px}.communication-compose textarea{grid-column:1 / -1;width:100%;box-sizing:border-box}.communication-compose .btn{justify-self:end}
+.detail-footer{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding-top:10px;border-top:1px solid var(--border)}
+.new-evidence-box{margin-top:14px;padding:12px;border:1px dashed #afbdd8;border-radius:10px;background:#f8faff}
+.new-evidence-box h4{margin:0 0 7px;font-size:12px;color:var(--text-strong)}.new-evidence-box h4 span{font-size:11px;font-weight:400;color:var(--text-muted);margin-left:6px}
+.new-evidence-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.new-evidence-controls input{max-width:100%}
+.new-evidence-previews{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+.new-evidence-item{width:134px;border:1px solid var(--border);border-radius:8px;padding:6px;background:#fff;box-sizing:border-box}
+.new-evidence-item img{width:120px;height:76px;object-fit:contain;background:#eef2f8;cursor:zoom-in;border-radius:4px}
+.new-evidence-item .name{display:block;font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:5px 0}
+.new-evidence-item .actions{display:flex;justify-content:space-between;align-items:center;font-size:10px}
+@media(max-width:1100px){.modal.detail-dialog{overflow:auto}.detail-layout.three-columns{grid-template-columns:1fr;height:auto}.detail-column{overflow:visible}.detail-column-heading{position:static}}
+.evidence-side{position:static;min-width:0;border:1px solid #c7d7f8;border-radius:12px;background:#f8faff;padding:14px;box-shadow:none}
+.evidence-hero{border-radius:10px;padding:12px;color:#fff;background:linear-gradient(135deg,#335eea,#5b8def);box-shadow:0 4px 12px rgb(51 94 234 / 22%);margin-bottom:10px}
+.evidence-hero.warehouse{background:linear-gradient(135deg,#b54708,#f79009)}
+.evidence-hero.owner{background:linear-gradient(135deg,#6941c6,#9e77ed)}
+.evidence-hero.buyer{background:linear-gradient(135deg,#087443,#32b583)}
+.evidence-hero.pending{background:linear-gradient(135deg,#667085,#98a2b3)}
+.evidence-hero .eyebrow{font-size:10px;opacity:.82;margin-bottom:5px}
+.evidence-hero strong{font-size:19px;display:block;letter-spacing:.5px}
+.evidence-hero small{display:block;margin-top:6px;line-height:1.55;opacity:.9}
+.evidence-title{font-size:12px;font-weight:700;color:var(--text-strong);margin:10px 0 6px}
+.evidence-plan{display:grid;gap:6px}
+.evidence-plan div{display:flex;gap:7px;align-items:flex-start;background:#fff;border:1px solid var(--border);border-radius:7px;padding:7px 8px;font-size:11.5px;color:var(--text)}
+.evidence-plan b{color:var(--accent);font-size:12px}
+.evidence-side .upload-box{background:#fff;border:1px dashed #9ab7f6;border-radius:8px;padding:9px;margin-top:9px}
+.evidence-side .upload-box .inp{max-width:100%;box-sizing:border-box}
+.evidence-side .file-list{margin-top:7px}
+@media(max-width:900px){.detail-layout{grid-template-columns:1fr}.evidence-side{position:static}}
+.reply{border-left:3px solid var(--border-strong);padding:7px 12px;margin-bottom:7px;border-radius:0 8px 8px 0;background:var(--surface-muted)}
+.reply.warehouse{border-color:var(--accent)}
+.reply.owner{border-color:#94a3b8}
+.reply .who{font-size:10.5px;color:var(--text-soft);margin-bottom:1px}
+.reply .txt{font-size:12px;white-space:normal;color:var(--text)}
+.note{font-size:11px;color:var(--text-muted);margin-top:8px;padding-top:8px;border-top:1px solid var(--border);line-height:1.7}
+.alert{border-radius:10px;padding:9px 13px;font-size:12px;margin-bottom:11px}
+.a-warn{background:var(--warning-soft);color:var(--warning-text)}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--text);color:#fff;padding:9px 18px;border-radius:10px;font-size:12px;z-index:1100;display:none;box-shadow:0 8px 24px rgb(16 24 40 / 25%)}
+.toast.on{display:block}
+.autofill{background:var(--accent-soft);border:1px solid #c7d9fb;border-radius:10px;padding:8px 12px;font-size:12px;margin-bottom:9px;line-height:1.8;color:var(--text-strong)}
+.autofill b{color:var(--accent)}
+@media(max-width:860px){.sidebar{display:none}.content{padding:12px}}
+
+/* ===== 登录遮罩 ===== */
+.login-mask{position:fixed;inset:0;background:var(--sidebar);display:none;align-items:center;justify-content:center;z-index:2000}
+.login-card{background:#fff;border-radius:16px;padding:26px 24px;width:300px;box-shadow:0 16px 40px rgb(0 0 0 / 30%)}
+.login-card .inp{font-size:13px;padding:9px 11px}
+.login-card .brand-mark{width:34px;height:34px;border-radius:9px;background:var(--sidebar-active);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:16px}
+
+/* ===== 工单看板 ===== */
+#wo-kpis .vl.pending{color:var(--warning-text)}
+#wo-kpis .vl.proc{color:var(--sky-text)}
+#wo-kpis .vl.done{color:var(--success-text)}
+#wo-kpis .vl.over{color:var(--danger-text)}
+.wo-role{display:inline-flex;border:1px solid var(--border-strong);border-radius:8px;overflow:hidden;flex-shrink:0}
+.wo-role button{border:0;background:var(--surface);padding:5px 11px;font:inherit;font-size:11.5px;cursor:pointer;color:var(--text-muted)}
+.wo-role button+button{border-left:1px solid var(--border)}
+.wo-role button.on{background:var(--accent);color:#fff}
+.wo-pri{font-weight:500}
+.wo-pri.p-high{color:var(--danger-text)}
+.wo-pri.p-medium{color:var(--warning-text)}
+.wo-pri.p-low{color:var(--text-muted)}
+.wo-info{display:grid;grid-template-columns:84px 1fr;gap:7px 14px;font-size:12.5px;margin-bottom:6px}
+.wo-info .l{color:var(--text-muted)}
+.wo-tl{display:flex;flex-direction:column;margin-bottom:4px}
+.wo-tl .it{display:grid;grid-template-columns:10px 1fr;gap:10px;padding:9px 0;border-bottom:1px dashed var(--border)}
+.wo-tl .it:last-child{border-bottom:0}
+.wo-tl .dot{width:8px;height:8px;border-radius:50%;background:var(--border-strong);margin-top:5px}
+.wo-tl .dot.bot_created{background:var(--accent)}
+.wo-tl .dot.wecom_scan{background:var(--sky-text)}
+.wo-tl .dot.ai_infer{background:var(--warning-text)}
+.wo-tl .dot.manual{background:var(--success-text)}
+.wo-tl .meta{font-size:11px;color:var(--text-soft)}
+.wo-tl .ct{font-size:12.5px;color:var(--text);white-space:pre-wrap;margin-top:2px}
+.wo-form{display:grid;gap:10px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
+.wo-form label{font-size:11.5px;color:var(--text-muted);display:block;margin-bottom:4px}
+.wo-form select,.wo-form input,.wo-form textarea{width:100%;box-sizing:border-box}
+.wo-form textarea{font-family:inherit;resize:vertical}
+.wo-close{position:absolute;top:12px;right:14px;border:0;background:transparent;font-size:20px;line-height:1;cursor:pointer;color:var(--text-soft)}
+.wo-close:hover{color:var(--text)}
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="brand">
+    <div class="brand-mark">赔</div>
+    <div><div class="brand-name">售后登记表</div><div class="brand-sub">Claims Workspace</div></div>
+  </div>
+  <div class="nav-group">工作区</div>
+  <a class="nav-item on" id="nav-board" href="javascript:;" onclick="go('board')"><span class="ico">▦</span>理赔工作台</a>
+  <a class="nav-item" id="nav-new" href="javascript:;" onclick="openNew()" data-perm="create"><span class="ico">＋</span>登记售后</a>
+  <a class="nav-item" id="nav-orders" href="javascript:;" onclick="go('orders')" data-perm="warehouse"><span class="ico">☰</span>工单看板</a>
+  <a class="nav-item" id="nav-stats" href="javascript:;" onclick="go('stats')"><span class="ico">◑</span>统计与归因</a>
+  <div class="nav-group">管理</div>
+  <a class="nav-item" id="nav-users" href="javascript:;" onclick="openUsers()" data-perm="admin" style="display:none"><span class="ico">◎</span>账号管理</a>
+  <div class="nav-foot">卖方 · 仓库方 · 快递方<br>理赔统一经由仓库追责</div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <h1 id="pageTitle">理赔工作台</h1>
+    <span class="crumb" id="crumb"></span>
+    <div class="top-month"><label for="fMonth">月份</label><input class="inp" type="month" id="fMonth" onchange="loadAll()"></div>
+    <span id="pageRevision" class="crumb">页面更新 __CLAIMS_PAGE_UPDATED__</span>
+    <button class="btn sm" onclick="reloadPage()">刷新页面</button>
+    <span class="spacer"></span>
+    <span id="viewScope" class="badge b-gray" title="当前账号所属渠道">视角 · —</span>
+    <span id="wdtBadge" class="badge b-gray">旺店通检测中…</span>
+    <span id="userChip" class="badge b-gray" style="display:none"></span>
+    <button class="btn sm" id="btnChgPw" style="display:none" onclick="openChangePw()">修改密码</button>
+    <button class="btn sm" id="btnLogout" style="display:none" onclick="logout()">退出</button>
+    <button class="btn sm" onclick="wdtTest()">测连接</button>
+  </div>
+
+  <div class="content" id="view-board">
+    <div class="metrics" id="cards"></div>
+
+    <div class="toolbar">
+      <button class="btn pri" data-perm="create" onclick="openNew()">+ 登记售后</button>
+      <span class="tb-sep"></span>
+      <span class="tb-act" data-perm="admin">
+        <button class="btn sm" onclick="$('fImport').click()">⇪ 导入旧台账</button>
+        <button class="btn sm" onclick="$('fReport').click()">⇪ 导入报表</button>
+        <button class="btn sm" onclick="downloadViaAuth('/api/export/template')">⎘ 导入模板</button>
+      </span>
+      <span class="tb-sep"></span>
+      <span class="tb-act">
+        <button class="btn sm" onclick="downloadViaAuth('/api/report/xlsx?month='+v('fMonth'))">▤ 导出报表</button>
+      </span>
+      <button class="btn sm" data-perm="admin" onclick="backfillReturns(this)" title="从旺店通批量补取退货物流/退货单号（先预览，确认后写入）">⟳ 补取退货信息</button>
+      <input class="inp" id="fShop" placeholder="店铺" style="width:130px" oninput="loadEvents()">
+      <input class="inp" id="fCarrier" placeholder="快递公司" style="width:95px" oninput="loadEvents()">
+      <input class="inp" id="fKeyword" placeholder="订单号 / 快递单号" style="width:140px" oninput="loadEvents()">
+      <select class="inp" id="fDuty" onchange="loadEvents()"><option value="">全部责任</option></select>
+      <select class="inp" id="fStatus" onchange="loadEvents()"><option value="">全部状态</option></select>
+      <label class="chk"><input type="checkbox" id="fPending" onchange="loadEvents()">仅责任待定</label>
+      <label class="chk"><input type="checkbox" id="fGap" onchange="loadEvents()">仅未收回</label>
+      <label class="chk"><input type="checkbox" id="fOverdue" onchange="loadEvents()">仅超期</label>
+      <span style="font-size:10.5px;color:var(--text-soft)">拖动表头换位置 · 拖列边缘调宽</span>
+      <button class="btn sm" onclick="resetTableLayout()">恢复列设置</button>
+      <span class="spacer"></span>
+      <span id="cnt" style="font-size:12px;color:var(--text-muted)"></span>
+    </div>
+
+    <div id="dupAlert"></div>
+    <div id="manualImportAlert"></div>
+    <div id="pageUpdateNotice" class="alert a-warn" hidden>页面有新版本，保存当前输入后即可更新。<button class="btn sm" onclick="reloadPage()">立即更新</button></div>
+    <div class="card" id="t0card"><div class="tablewrap" id="t0"></div></div>
+  </div>
+
+  <div class="content" id="view-stats" style="display:none"></div>
+
+  <div class="content" id="view-orders" style="display:none">
+    <div class="metrics" id="wo-kpis">
+      <div class="metric"><div class="lb">待处理</div><div class="vl pending" data-k="pending">–</div></div>
+      <div class="metric"><div class="lb">处理中</div><div class="vl proc" data-k="processing">–</div></div>
+      <div class="metric"><div class="lb">今日已解决</div><div class="vl done" data-k="resolved_today">–</div></div>
+      <div class="metric"><div class="lb">超时预警</div><div class="vl over" data-k="overdue">–</div></div>
+    </div>
+
+    <div class="toolbar">
+      <span class="wo-role" id="wo-role">
+        <button type="button" data-r="ops" class="on">运营 / 客服</button>
+        <button type="button" data-r="wh">仓库端</button>
+      </span>
+      <span class="tb-sep"></span>
+      <select class="inp" id="wo-status">
+        <option value="">全部状态</option>
+        <option value="pending">待处理</option>
+        <option value="processing">处理中</option>
+        <option value="waiting">待客户</option>
+        <option value="resolved">已解决</option>
+        <option value="closed">已关闭</option>
+        <option value="overdue">超时</option>
+      </select>
+      <select class="inp" id="wo-category">
+        <option value="">全部分类</option>
+        <option value="return">退货</option>
+        <option value="exchange">换货</option>
+        <option value="missing">漏发</option>
+        <option value="damage">破损</option>
+        <option value="wrong">错发</option>
+        <option value="other">其他</option>
+      </select>
+      <select class="inp" id="wo-priority">
+        <option value="">全部优先级</option>
+        <option value="high">高</option>
+        <option value="medium">中</option>
+        <option value="low">低</option>
+      </select>
+      <input class="inp" id="wo-owner" placeholder="负责人" style="width:110px">
+      <input class="inp" id="wo-keyword" placeholder="订单号 / 客户 / 工单号 / 摘要" style="width:200px">
+      <button class="btn sm" onclick="woExportCsv()">⇩ 导出 CSV</button>
+      <span class="spacer"></span>
+      <span id="wo-cnt" style="font-size:12px;color:var(--text-muted)"></span>
+    </div>
+
+    <div class="card"><div class="tablewrap" id="wo-table"><div class="empty">加载中…</div></div></div>
+  </div>
+</div>
+
+<div class="mask" id="mask"><div class="modal" id="modal"></div></div>
+<div class="mask duplicate-mask" id="duplicateMask"><div class="modal duplicate-modal" id="duplicateModal" role="dialog" aria-modal="true" aria-labelledby="duplicateTitle" tabindex="-1"></div></div>
+<div class="toast" id="toast"></div>
+<input type="file" id="fImport" style="display:none" accept=".xlsx,.csv" onchange="doImport(this)">
+<input type="file" id="fReport" style="display:none" accept=".xlsx" onchange="doReportImport(this)">
+
+<div id="login" class="login-mask" style="display:none">
+ <div class="login-card">
+  <div style="text-align:center">
+   <div class="brand-mark" style="margin:0 auto 10px">赔</div>
+   <div style="font-size:15px;font-weight:600;color:var(--text)">售后登记表</div>
+   <div style="font-size:11.5px;color:var(--text-muted);margin:3px 0 16px">请登录后使用</div>
+  </div>
+  <input class="inp" id="lg_email" type="text" autocomplete="username" placeholder="账号（用户名或邮箱）" style="width:100%" onkeydown="if(event.key==='Enter')$('lg_pwd').focus()">
+  <input class="inp" id="lg_pwd" type="password" placeholder="密码" style="width:100%;margin-top:8px" onkeydown="if(event.key==='Enter')doLogin()">
+  <button class="btn pri" style="width:100%;margin-top:10px;justify-content:center" onclick="doLogin()">登录</button>
+  <div id="lg_hint" style="font-size:11px;color:var(--text-muted);margin-top:8px;display:none;line-height:1.6"></div>
+  <div id="lg_err" style="color:var(--danger-text);font-size:11.5px;margin-top:8px;display:none"></div>
+ </div>
+</div>
+
+<script>
+const PAGE_REVISION='__CLAIMS_PAGE_REVISION__';
+const PAGE_ID=new URL(location.href).searchParams.get('_refresh_id')||(Date.now().toString(36)+'-'+Math.random().toString(36).slice(2));
+const $=id=>document.getElementById(id);
+const v=id=>$(id).value;
+const dtInput=v0=>{const s=String(v0||'').replace(' ','T');return s.length===10?s+'T00:00':s.slice(0,16)};
+const dtText=v0=>String(v0||'').replace('T',' ').slice(0,16);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const num=x=>parseFloat(x)||0;
+const money=x=>num(x).toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2});
+let META=null,EV=[],CUR=null,busy=false,lastStats=null,VIEW='board';
+let duplicateGroups=[],duplicateReviewBusy=false;
+
+const ST_CLS={paid:'b-green',rejected:'b-red',gave_up:'b-gray',submitted:'b-amber',replying:'b-sky',draft:'b-gray'};
+const DUTY_CLS={warehouse:'b-amber',express:'b-sky',shared:'b-amber',juxiaofan:'b-sky',buyer:'b-amber',custom:'b-gray',undecided:'b-gray'};
+const stLb=s=>{const x=(META?.status||[]).find(y=>y.value===s);return x?x.label:s};
+const dyLb=(d,custom='')=>{if(d==='custom'&&custom)return custom;const x=(META?.duty_party||[]).find(y=>y.value===d);return x?x.label:d};
+const stTag=s=>`<span class="badge ${ST_CLS[s]||'b-gray'}">${stLb(s)}</span>`;
+const dyTag=(d,custom='')=>`<span class="badge ${DUTY_CLS[d]||'b-gray'}">${esc(dyLb(d,custom))}</span>`;
+function toggleCustomDuty(selectId,inputId){const s=$(selectId),i=$(inputId);if(!s||!i)return;i.style.display=s.value==='custom'?'block':'none';if(s.value!=='custom')i.value='';}
+const TYPE_LB={damage:'破损',loss:'丢件',shortage:'漏发/错发',wrong:'错发（历史）',undelivered:'未派送/派送错误',other:'其他'};
+const RETURN_CLS={received:'b-green',shipping:'b-sky',suspected:'b-amber'};
+const returnTag=e=>{const r=e.return_detection||{};return r.state&&r.state!=='none'?`<span class="badge ${RETURN_CLS[r.state]||'b-gray'}" title="${esc(r.evidence||'')}" style="max-width:145px;overflow:hidden;text-overflow:ellipsis">${esc(r.label)}</span>`:'<span style="color:var(--text-soft)">—</span>'};
+
+function ageCell(e){
+  if(e.status!=='submitted'&&e.status!=='replying')return '<span style="color:var(--text-soft)">—</span>';
+  const d=new Date(e.event_date);const t=new Date();const a=Math.floor((t-d)/86400000);
+  const col=a>=15?'var(--danger-text)':a<=7?'var(--success-text)':'var(--warning-text)';
+  return `<span style="color:${col}" title="在途 ${a} 天">${a}天</span>`;
+}
+
+function reloadPage(){const url=new URL(location.href);url.searchParams.set('_reload',Date.now());location.replace(url.href)}
+async function reportPageReady(){
+ const field=$('n_lno'),mask=$('mask');
+ try{await api('/api/page-ready',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+  page_id:PAGE_ID,revision:PAGE_REVISION,
+  columns_ready:document.querySelectorAll('#t0 .col-resizer').length===TABLE_COLUMNS.length,
+  shipment_form_visible:!!(field&&field.placeholder==='输入发货运单号自动查询'&&mask.classList.contains('on')&&field.getBoundingClientRect().width>0)
+ })})}catch(e){}
+}
+async function checkPageVersion(){
+ try{const r=await fetch('/api/page-version',{cache:'no-store'});if(!r.ok)return;const latest=await r.json();
+  if(latest.revision===PAGE_REVISION)return;
+  if($('mask').classList.contains('on')||$('duplicateMask').classList.contains('on')||document.activeElement?.matches('input,textarea,select')){$('pageUpdateNotice').hidden=false;return}
+  if(document.visibilityState==='visible')reloadPage();
+ }catch(e){}
+}
+setInterval(checkPageVersion,15000);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')checkPageVersion()});
+
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('on'),2400)}
+function authHeader(){const t=localStorage.getItem('claims_token');return t?{'Authorization':'Bearer '+t}:{}}
+// 开发期免登录标记：/api/me 返回 dev_mode 时置位。此后即使偶发 401 也不再弹登录框，
+// 否则开发中一次无关的 401 就会把登录界面重新拽出来（用户明确要求「登录界面关闭」）。
+let DEV_MODE=false;
+// 当前账号权限上下文（由 /api/me 填充）：角色定动作上限，渠道定可改字段。
+// 默认给「最宽」权限，/me 回来后再收紧；真正的边界在后端，这里只负责界面别误导人。
+let ME={email:'',role:'admin',role_label:'',channel:'',channel_label:'',is_admin:true,can_write:true,can_create:true,writable_fields:'*',dev_mode:false};
+function canWrite(field){if(!ME.can_write)return false;return ME.writable_fields==='*'||(ME.writable_fields||[]).includes(field)}
+function isChannel(c){return (ME.channel||'')===c}
+// 表格列 → 后端字段名（用于把无权编辑的单元格置为只读）。
+const COL_FIELD={date:'event_date',carrier:'ship_carrier',tracking:'ship_logistics_no',refund:'refund_amount',claim:'claim_amount',received:'received_amount'};
+function lockCells(scope){
+ if(!scope)return;
+ scope.querySelectorAll('td[data-col] > input.cell').forEach(inp=>{
+  const f=COL_FIELD[inp.closest('td').dataset.col];
+  if(f&&!canWrite(f)){inp.readOnly=true;inp.title='该字段由其他渠道负责填写';inp.style.color='var(--text-muted)'}
+ });
+}
+// 按角色/渠道显隐工具栏与导航：data-perm=create|write|admin。
+function applyPermissions(){
+ const show=(sel,on)=>{document.querySelectorAll(sel).forEach(el=>{el.style.display=on?'':'none'})};
+ show("[data-perm='create']",ME.can_create!==false);
+ show("[data-perm='write']",ME.can_write!==false);
+ show("[data-perm='admin']",!!ME.is_admin);
+ show("[data-perm='warehouse']",ME.channel==="warehouse"||!!ME.is_admin||!ME.channel);
+ const chip=$('userChip');
+ if(chip&&!ME.dev_mode){
+  const parts=[ME.role_label].filter(Boolean);
+  chip.textContent=ME.email+(parts.length?' · '+parts.join(' · '):'');
+ }
+ renderScope();
+}
+// 当前「视角」= 账号所属渠道。数据三方皆看全量，区别只在「能改哪些字段」，
+// 所以把渠道显式顶在右上角，避免仓库/客服互相覆盖口径。
+const SCOPE_HINT={
+ warehouse:'仓库视角：只能修改「入库检测 / 责任判定 / 仓库工单号 / 实收金额 / 状态」。台账全量可见。',
+ outsource:'外包客服视角：只能修改「售后原因与类型 / 售后内容 / 退款原因 / 沟通回复」。台账全量可见。',
+ operations:'运营和客服视角：可登记新单，并修改全部业务字段（不含账号管理）。台账全量可见。',
+};
+function renderScope(){
+ const el=$('viewScope');if(!el)return;
+ const ch=ME.channel||'';
+ el.textContent='视角 · '+(ch?(ME.channel_label||ch):'全部字段');
+ el.className='badge '+(ch?'b-sky':'b-gray');
+ el.title=SCOPE_HINT[ch]||'未分配渠道（历史账号或管理员）：不受字段限制，可修改全部字段。数据三方皆可见。';
+}
+async function api(p,o={}){
+ const hd=Object.assign(authHeader(),o.headers||{});
+ const r=await fetch(p,Object.assign({},o,{headers:hd}));
+ if(r.status===401){
+  localStorage.removeItem('claims_token');
+  if(!DEV_MODE)showLogin('登录已过期，请重新登录');
+  throw new Error(DEV_MODE?'开发模式：接口返回 401（免登录期异常）':'未登录或已过期');
+ }
+ const ct=r.headers.get('content-type')||'';
+ if(!ct.includes('json')){if(!r.ok)throw new Error('HTTP '+r.status);return r}
+ const d=await r.json();if(!r.ok)throw new Error(d.detail||('HTTP '+r.status));return d}
+
+function showLogin(msg){
+ const m=$('login');m.style.display='flex';
+ const e=$('lg_err');
+ if(msg){e.textContent=msg;e.style.display='block'}else{e.style.display='none'}
+ const h=$('lg_hint');if(h)h.style.display='none';
+ const p=$('lg_pwd');if(p)p.value='';
+ setTimeout(()=>{const em=$('lg_email');if(em)em.focus()},50);
+}
+function hideLogin(){$('login').style.display='none'}
+// 本系统仅支持「账号 + 密码」登录，无邮箱验证码。
+async function doLogin(){
+ const email=$('lg_email').value.trim();
+ const pwd=$('lg_pwd').value;
+ const e=$('lg_err');e.style.display='none';
+ if(!email){e.textContent='请输入账号';e.style.display='block';return}
+ if(!pwd){e.textContent='请输入密码';e.style.display='block';return}
+ try{
+  const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pwd})});
+  if(!r.ok){const d=await r.json().catch(()=>({}));e.textContent=d.detail||('登录失败（'+r.status+'）');e.style.display='block';return}
+  const d=await r.json();localStorage.setItem('claims_token',d.token);localStorage.removeItem('claims_user');hideLogin();await initApp();
+ }catch(err){e.textContent='登录失败：'+err.message;e.style.display='block';}
+}
+function logout(){
+ // 免登录开发模式下不存在"会话"，退出无意义且会把登录框拽出来，直接忽略。
+ if(DEV_MODE){toast('开发模式：当前为免登录，无需退出');return}
+ localStorage.removeItem('claims_token');localStorage.removeItem('claims_user');showLogin('已退出登录');
+}
+async function openChangePw(){
+ const html=`<div style="width:360px;max-width:92vw">
+  <div style="font-size:15px;font-weight:600;margin-bottom:4px">修改密码</div>
+  <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">请输入原密码与新密码（均至少 6 位）。</div>
+  <div style="margin-bottom:9px"><label class="fld" style="display:block"><span>原密码</span><input class="inp" id="cp_old" type="password" style="width:100%"></label></div>
+  <div style="margin-bottom:9px"><label class="fld" style="display:block"><span>新密码（≥6位）</span><input class="inp" id="cp_new" type="password" style="width:100%"></label></div>
+  <div style="margin-bottom:12px"><label class="fld" style="display:block"><span>确认新密码</span><input class="inp" id="cp_new2" type="password" style="width:100%"></label></div>
+  <button class="btn pri" style="width:100%;justify-content:center" onclick="doChangePw()">保存</button>
+  <div id="cp_err" style="color:var(--danger-text);font-size:11.5px;margin-top:8px;display:none"></div>
+ </div>`;
+ $('modal').innerHTML=html;$('mask').classList.add('on');
+}
+async function doChangePw(){
+ const old=$('cp_old')?$('cp_old').value:'';
+ const nw=$('cp_new').value,nw2=$('cp_new2').value;
+ const e=$('cp_err');e.style.display='none';
+ if(nw.length<6){e.textContent='新密码至少 6 位';e.style.display='block';return}
+ if(nw!==nw2){e.textContent='两次输入不一致';e.style.display='block';return}
+ try{
+  const r=await api('/api/auth/change-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({old_password:old,new_password:nw})});
+  toast(r.message||'密码已更新');closeM();
+ }catch(err){e.textContent=err.message;e.style.display='block';}
+}
+async function downloadViaAuth(url,filename){
+ try{
+  const r=await fetch(url,{headers:authHeader()});
+  if(!r.ok){toast('下载失败：HTTP '+r.status);return}
+  const blob=await r.blob();
+  const a=document.createElement('a');
+  const cd=r.headers.get('content-disposition')||'';
+  const star=cd.match(/filename\*=UTF-8''([^;]+)/i);
+  const m=cd.match(/filename="?([^";]+)"?/);
+  a.href=URL.createObjectURL(blob);
+  a.download=filename||(star?decodeURIComponent(star[1]):(m?m[1]:'download'));
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+ }catch(err){toast('下载失败：'+err.message)}
+}
+
+function go(view){
+ VIEW=view;
+ $('view-board').style.display=view==='board'?'':'none';
+ $('view-stats').style.display=view==='stats'?'':'none';
+ $('view-orders').style.display=view==='orders'?'':'none';
+ $('nav-board').classList.toggle('on',view==='board');
+ $('nav-stats').classList.toggle('on',view==='stats');
+ $('nav-orders').classList.toggle('on',view==='orders');
+ $('pageTitle').textContent=view==='stats'?'统计与归因':view==='orders'?'工单看板':'理赔工作台';
+ if(view==='stats')renderStats();
+ if(view==='orders')woLoad();
+}
+
+function cardsHtml(s,withHint){
+ const recvZero = (s.received_total||0)===0;
+ const A=[
+  ['事件',s.events,'条','basic',''],
+  ['顾客已赔',money(s.customer_refund),'元','money',''],
+  ['仓库赔付金额',money(s.claimed_total),'元','money',''],
+  ['实收金额',money(s.received_total),'元','money', recvZero?"实收未回填，当前等于 0":""],
+  ['未收回',money(s.gap_total),'元','money', recvZero?"实收未回填，当前等于 索赔额":""],
+  ['净损失',money(s.net_loss),'元','money', recvZero?"实收未回填，当前等于 已赔额":""],
+  ["预计最终亏损",money((s.customer_refund||0)-(s.claimed_total||0)),"元","money","= 已赔 − 索赔（假设索赔全额到账）"],
+  ["已确定坏账",money(s.confirmed_bad_debt||0),"元","type","= 驳回/放弃 状态的未收回"],
+  ["责任待定",money(s.pending_duty),"元","type",""],
+  ["次品入库",s.defective_stockins,"单","type","破损举证线索"],
+ ];
+  return A.map(a=>`<div class="metric ${a[3]}"><div class="lb">${a[0]}</div>
+   <div class="vl ${a[3]}">${a[1]}<span class="unit">${a[2]}</span></div>
+   ${withHint&&a[4]?`<div class="hint">${a[4]}</div>`:''}</div>`).join("");
+}
+
+async function loadAll(){
+  if(busy)return;busy=true;
+  try{
+   const q=v('fMonth')?`?month=${v('fMonth')}`:'';
+   lastStats=await api('/api/stats'+q);
+   $('cards').innerHTML=cardsHtml(lastStats,true);
+   await loadEvents();
+   const dups=lastStats.duplicates||[];
+   $('dupAlert').innerHTML=dups.length?`<div class="alert a-warn">⚠ 检出 ${dups.length} 组疑似重复申报，请先完成弹窗中的核对处理。</div>`:'';
+   showDuplicateReview(dups);
+   await refreshManualPending();
+  }catch(e){toast('加载失败：'+e.message)}finally{busy=false}
+}
+function showDuplicateReview(groups){
+ const previous=duplicateGroups[0]?.fingerprint;
+ duplicateGroups=groups;
+ const mask=$('duplicateMask'),modal=$('duplicateModal');
+ const open=groups.length>0;
+ document.querySelector('.main').inert=open;
+ document.querySelector('.sidebar').inert=open;
+ $('mask').inert=open;
+ if(!open){mask.classList.remove('on');return}
+ if(mask.classList.contains('on')&&previous===groups[0].fingerprint)return;
+ const group=groups[0];
+ modal.innerHTML=`<h2 id="duplicateTitle">必须核对：疑似重复申报</h2>
+  <p>还有 ${groups.length} 组待处理。相同${esc(group.field)}：<b class="mono">${esc(group.value)}</b>，共 ${group.count} 条登记。</p>
+  <div class="note">请对照原始记录逐条核实。号码录错可直接修正；确为重复登记，可选择保留记录并合并；同单不同事故可填写依据后分别申报。处理完成前无法关闭此窗口。</div>
+  <div class="tablewrap"><table><thead><tr><th>合并时保留</th><th>登记编号 / 登记日期</th><th>原始订单号（可修正）</th><th>发货单号（可修正）</th><th>类型 / 事故描述</th><th>申请 / 实收</th></tr></thead><tbody>
+  ${group.records.map((r,i)=>`<tr><td><input type="radio" name="dup_keep" value="${i}" aria-label="保留记录${i+1}"></td><td><b class="mono">${esc(r.code)}</b><br>${esc(r.event_date)}<br>${esc(r.shop_name||'未填店铺')}</td>
+   <td><input class="inp mono" id="dup_tid_${i}" aria-label="记录${i+1}原始订单号" maxlength="64" value="${esc(r.wdt_tid)}"></td>
+   <td><input class="inp mono" id="dup_lno_${i}" aria-label="记录${i+1}发货单号" maxlength="64" value="${esc(r.ship_logistics_no)}"></td>
+   <td>${esc(TYPE_LB[r.incident_type]||r.incident_type)}<br>${esc(r.customer_claim||'未填事故描述')}</td>
+   <td>${money(r.claim_amount)} / ${money(r.received_amount)}</td></tr>`).join('')}
+  </tbody></table></div>
+  <p style="color:var(--warning-text)">合并后仅保留所选记录的金额参与统计，不累加重复金额。其他记录、附件、退款明细和历史操作完整归档，可在保留记录详情中查阅。</p>
+  <label for="dup_reason">核对依据（必填，至少6个字）</label>
+  <textarea class="inp duplicate-reason" id="dup_reason" placeholder="说明哪些号码录错，或说明各条登记的事故差异、时间或凭证"></textarea>
+  <div class="duplicate-error" id="dup_error" role="alert"></div>
+  <div class="duplicate-actions"><button class="btn" onclick="refreshDuplicateReview()">重新读取记录</button>
+   <button class="btn" onclick="submitDuplicateReview('correct')">保存单号修正并复查</button>
+   <button class="btn" onclick="submitDuplicateReview('merge')">合并到所选记录</button>
+   <button class="btn pri" onclick="submitDuplicateReview('separate')">确认各自独立申报并留痕</button></div>`;
+ mask.classList.add('on');modal.focus();
+}
+async function refreshDuplicateReview(){
+ if(duplicateReviewBusy)return;
+ try{const r=await api('/api/duplicates');duplicateGroups=[];showDuplicateReview(r.groups)}
+ catch(err){$('dup_error').textContent=err.message}
+}
+async function submitDuplicateReview(decision){
+ if(duplicateReviewBusy||!duplicateGroups.length)return;
+ const group=duplicateGroups[0],reason=v('dup_reason').trim();
+ if(reason.length<6){$('dup_error').textContent='请填写至少6个字的核对依据';$('dup_reason').focus();return}
+ const corrections=group.records.map((r,i)=>({code:r.code,wdt_tid:v('dup_tid_'+i).trim(),ship_logistics_no:v('dup_lno_'+i).trim()}));
+ if(decision!=='correct'&&corrections.some((r,i)=>r.wdt_tid!==(group.records[i].wdt_tid||'')||r.ship_logistics_no!==(group.records[i].ship_logistics_no||''))){
+  $('dup_error').textContent='号码已有改动，请先选择“保存单号修正并复查”';return;
+ }
+ const keep=document.querySelector('input[name="dup_keep"]:checked');
+ if(decision==='merge'&&!keep){$('dup_error').textContent='请先勾选要保留的登记，核实其金额后再合并';return}
+ const keep_code=decision==='merge'?group.records[Number(keep.value)].code:'';
+ duplicateReviewBusy=true;$('duplicateModal').querySelectorAll('button,input,textarea').forEach(x=>x.disabled=true);
+ try{
+  const r=await api('/api/duplicates/review',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fingerprint:group.fingerprint,decision,reason,corrections,keep_code})});
+  duplicateGroups=[];showDuplicateReview(r.groups);await loadAll();
+  toast(r.groups.length?'已记录核对结果，请继续处理剩余重复':'重复核对已完成');
+ }catch(err){$('dup_error').textContent=err.message}
+ finally{duplicateReviewBusy=false;$('duplicateModal').querySelectorAll('button,input,textarea').forEach(x=>x.disabled=false)}
+}
+document.addEventListener('keydown',e=>{
+ if(!$('duplicateMask').classList.contains('on'))return;
+ if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();return}
+ if(e.key==='Tab'){
+  const nodes=[...$('duplicateModal').querySelectorAll('button,input,textarea')].filter(x=>!x.disabled);
+  if(!nodes.length){e.preventDefault();$('duplicateModal').focus();return}
+  const first=nodes[0],last=nodes[nodes.length-1],active=document.activeElement;
+  if(e.shiftKey&&(active===first||!nodes.includes(active))){e.preventDefault();last.focus()}
+  else if(!e.shiftKey&&(active===last||!nodes.includes(active))){e.preventDefault();first.focus()}
+ }
+},true);
+async function loadEvents(){
+  const p=new URLSearchParams();
+  if(v('fMonth'))p.set('month',v('fMonth'));
+  if(v('fShop'))p.set('shop',v('fShop'));
+  if(v('fCarrier'))p.set('carrier',v('fCarrier'));
+  if(v('fKeyword'))p.set('keyword',v('fKeyword'));
+  if(v('fDuty'))p.set('duty_party',v('fDuty'));
+  if(v('fStatus'))p.set('status',v('fStatus'));
+  if($('fPending').checked)p.set('only_pending_duty','true');
+  if($('fGap').checked)p.set('only_gap','true');
+  if($('fOverdue').checked)p.set('only_overdue','true');
+  p.set('limit','100');
+  const d=await api('/api/events?'+p.toString());
+  EV=d.rows;$('cnt').textContent=`共 ${d.total} 条`;t0();
+}
+
+const TABLE_LAYOUT_KEY='claims_table_layout_v3_grouped';
+const TABLE_COLUMNS=[
+['order','原始订单号',190,'basic'],['date','登记日期（售后时间）',160,'basic'],['shop','店铺名称',220,'basic'],['creator','登记人',120,'basic'],['carrier','发货快递公司',120,'basic'],['tracking','发货物流单号',170,'basic'],
+['type','售后原因',100,'type'],['aftertype','售后类型',110,'type'],['duty','责任方',125,'type'],['return','原单退回',145,'type'],
+['orderamount','订单金额',100,'money'],['refund','顾客已赔',100,'money'],['claim','仓库赔付金额',100,'money'],['received','实收金额',100,'money'],['gap','未收回',100,'money'],['loss','净损失',100,'money'],
+['status','状态',115,'progress'],['age','在途',65,'progress'],['stockin','入库检测',100,'progress'],['detail','详情',75,'progress']
+];
+const TABLE_GROUPS={basic:'基本信息',type:'售后类型与责任',money:'金额',progress:'处理进度'};
+const columnGroup=key=>(TABLE_COLUMNS.find(c=>c[0]===key)||[])[3];
+const TABLE_DEFAULT_ORDER=TABLE_COLUMNS.map(c=>c[0]);
+function readTableLayout(){
+ try{const raw=JSON.parse(localStorage.getItem(TABLE_LAYOUT_KEY)||'{}');
+  const order=Array.isArray(raw.order)?raw.order.filter(k=>TABLE_DEFAULT_ORDER.includes(k)):[];
+  return {order:[...order,...TABLE_DEFAULT_ORDER.filter(k=>!order.includes(k))],widths:raw.widths||{}};
+ }catch(e){return {order:TABLE_DEFAULT_ORDER.slice(),widths:{}}}
+}
+let tableLayout=readTableLayout();
+function saveTableLayout(){try{localStorage.setItem(TABLE_LAYOUT_KEY,JSON.stringify(tableLayout))}catch(e){}}
+function resetTableLayout(){tableLayout={order:TABLE_DEFAULT_ORDER.slice(),widths:{}};saveTableLayout();t0()}
+function applyTableLayout(){
+ const table=document.querySelector('#t0 table');if(!table)return;
+ table.style.tableLayout='fixed';table.style.width='max-content';table.style.minWidth='100%';
+ let group=table.querySelector('colgroup');if(!group){group=document.createElement('colgroup');table.prepend(group)}
+ group.innerHTML=tableLayout.order.map(k=>`<col data-col="${k}">`).join('');
+ tableLayout.order.forEach(k=>{const col=group.querySelector(`col[data-col="${k}"]`);if(col)col.style.width=(Number(tableLayout.widths[k])||TABLE_COLUMNS.find(c=>c[0]===k)[2])+'px'});
+ table.querySelectorAll('tr:not(.table-group-row)').forEach(tr=>{
+  const cells=[...tr.children];
+  for(const key of tableLayout.order){const cell=cells.find(x=>x.dataset.col===key);if(cell)tr.appendChild(cell)}
+ });
+ table.querySelectorAll('thead th[data-col]').forEach(th=>{
+  th.title='同一分组内拖动换位置；拖右边缘调整宽度';
+  if(!th.querySelector('.col-resizer')){const grip=document.createElement('span');grip.className='col-resizer';grip.setAttribute('aria-label','拖动调整列宽');th.appendChild(grip)}
+ });
+}
+function bindTableLayout(){
+ const root=$('t0');if(root.dataset.layoutBound)return;root.dataset.layoutBound='1';
+ root.addEventListener('pointerdown',e=>{
+  const th=e.target.closest('th[data-col]');if(!th||e.target.closest('.col-resizer'))return;
+  const from=th.dataset.col,startX=e.clientX,startY=e.clientY;let moved=false;
+  th.classList.add('dragging');
+  const move=ev=>{if(Math.abs(ev.clientX-startX)+Math.abs(ev.clientY-startY)>6)moved=true};
+  const up=ev=>{
+   window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',up);th.classList.remove('dragging');
+   if(!moved)return;
+   const target=document.elementFromPoint(ev.clientX,ev.clientY)?.closest('#t0 th[data-col]');
+   const to=target?.dataset.col;if(!to||to===from||columnGroup(to)!==columnGroup(from))return;
+   const order=tableLayout.order.slice(),a=order.indexOf(from),b=order.indexOf(to);order.splice(a,1);order.splice(b,0,from);
+   tableLayout.order=order;saveTableLayout();t0();
+  };
+  window.addEventListener('pointermove',move);window.addEventListener('pointerup',up,{once:true});
+ });
+ root.addEventListener('pointerdown',e=>{
+  const grip=e.target.closest('.col-resizer'),th=grip&&grip.closest('th[data-col]');if(!th)return;
+  e.preventDefault();e.stopPropagation();grip.classList.add('active');const key=th.dataset.col,startX=e.clientX,startW=th.getBoundingClientRect().width;
+  const move=ev=>{const width=Math.max(55,Math.round(startW+ev.clientX-startX));tableLayout.widths[key]=width;const col=root.querySelector(`col[data-col="${key}"]`);if(col)col.style.width=width+'px'};
+  const up=()=>{grip.classList.remove('active');window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',up);saveTableLayout()};
+  window.addEventListener('pointermove',move);window.addEventListener('pointerup',up,{once:true});
+ });
+}
+function t0(){
+ const rows=EV.map((e,i)=>{
+ const cell=(k,cls='')=>`<td data-col="${({event_date:'date',wdt_tid:'order',ship_carrier:'carrier',ship_logistics_no:'tracking'})[k]}" class="${cls}"><input class="cell" value="${esc(k==='event_date'?dtText(e[k]):(e[k]??''))}" onchange="save(${i},'${k}',this.value)"></td>`;
+  const numc=(k,col)=>{if(!canWrite(k))return `<td data-col="${col}" class="numtxt">${num(e[k])?money(e[k]):'<span style="color:var(--text-soft)">—</span>'}</td>`;if(e.claim_amount_known===false&&k==='claim_amount')return ME.is_admin?`<td data-col="${col}"><button class="btn sm" onclick="openManualPending('${e.code}')">金额待补</button></td>`:`<td data-col="${col}" class="numtxt" title="历史台账金额缺失，需管理员补齐"><span style="color:var(--warning-text)">待补</span></td>`;return `<td data-col="${col}" class="num"><input class="cell" value="${e[k]??''}" onchange="confirmAmount(${i},this,'${k}')" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}"></td>`};
+  const sk=e.stockin||{};
+  const ret=e.return_detection||{};
+  return `<tr>
+  ${cell('event_date')}
+  <td data-col="shop" class="t" style="max-width:180px;overflow:hidden;text-overflow:ellipsis" title="${esc(e.shop_name)}">${esc(e.shop_name||'—')}</td>
+  <td data-col="order" class="t"><a class="link mono" href="javascript:;" onclick="openDetail('${e.code}')">${esc(e.wdt_tid||'待旺店通核验')}</a>${e.manual_import&&e.manual_import.verification_source==='manual_exception'?'<span class="badge b-amber" title="人工补录来源，补齐后仍保留此标签">人工补录</span>':''}${!e.wdt_tid?'<span class="badge b-amber">历史待补全</span>':''}</td>
+  <td data-col="creator" class="t" title="${esc(e.created_by||'历史导入')}">${esc(e.created_by||'历史导入')}</td>
+  <td data-col="orderamount" class="t numtxt auto-number">${e.order_amount_known||num(e.order_amount)?money(e.order_amount):'<span style="color:var(--text-soft)">待同步</span>'}</td>
+  ${cell('ship_carrier')}${cell('ship_logistics_no','mono')}
+  <td data-col="type" class="t"><span class="badge ${e.incident_type==='damage'?'b-red':'b-amber'}">${TYPE_LB[e.incident_type]||e.incident_type}</span></td>
+  <td data-col="aftertype" class="t">${e.after_sales_type?`<span class="badge ${e.after_sales_type==='original_return'?'b-red':'b-sky'}">${(META.after_sales_type.find(x=>x.value===e.after_sales_type)||{}).label||e.after_sales_type}</span>`:'<span style="color:var(--text-soft)">未确定</span>'}</td>
+  ${numc('refund_amount','refund')}
+  <td data-col="duty">${dyTag(e.duty_party,e.duty_party_custom)}</td>
+  ${numc('claim_amount','claim')}${numc('received_amount','received')}
+  <td data-col="gap" class="t numtxt">${num(e.gap_amount)?`<span style="color:var(--danger-text)">${money(e.gap_amount)}</span>`:'<span style="color:var(--text-soft)">—</span>'}</td>
+  <td data-col="loss" class="t numtxt">${num(e.net_loss)?`<span style="color:${num(e.net_loss)>0?'var(--danger-text)':(num(e.net_loss)<0?'var(--success-text)':'var(--text-soft)')}">${num(e.net_loss)<0?'净收益 '+money(-e.net_loss):money(e.net_loss)}</span>`:(num(e.refund_amount)?'0.00':'<span style="color:var(--text-soft)" title="顾客已赔未回填">待回填</span>')}</td>
+  <td data-col="status">${stTag(e.status)}</td><td data-col="age">${ageCell(e)}</td>
+  <td data-col="return">${returnTag(e)}</td>
+  <td data-col="stockin">${sk.found?`<span class="badge ${sk.is_defective?'b-red':'b-gray'}" title="${esc(sk.warehouse)}">${sk.is_defective?'次品仓':'已入库'}</span>`:'<span style="color:var(--text-soft)">未查</span>'}</td>
+  <td data-col="detail" class="t">${e.missing_fields?.length?(ME.is_admin?`<button class="btn sm" onclick="openManualPending('${e.code}')">人工补齐</button> `:'<span class="badge b-amber">待补齐</span> '):(e.manual_import&&!e.manual_import.wdt_verified?'<span class="badge b-amber" title="人工信息已齐全，旺店通尚未核验；不影响人工补齐完成状态">人工已补齐</span> ':'')}<button class="btn sm" onclick="openDetail('${e.code}')">详情</button></td></tr>`;
+ }).join('');
+ const heads=TABLE_COLUMNS.map(([key,label,,group])=>`<th data-col="${key}" class="head-${group}" style="${group==='money'?'text-align:right':''}">${label}</th>`).join('');
+ const groupHeads=Object.entries(TABLE_GROUPS).map(([key,label])=>`<th colspan="${TABLE_COLUMNS.filter(c=>c[3]===key).length}" class="head-${key}">${label}</th>`).join('');
+ $('t0').innerHTML=`<table><thead><tr class="table-group-row">${groupHeads}</tr><tr>${heads}</tr></thead><tbody>${rows||('<tr><td colspan="20" class="empty">'+(v('fMonth')?v('fMonth')+' 月份暂无登记，':'暂无登记，')+'点击「+ 登记售后」开始</td></tr>')}</tbody></table>`;
+ applyTableLayout();bindTableLayout();lockCells($('t0'));
+}
+
+function renderStats(){
+ if(!lastStats)return;
+ const s=lastStats;
+ const undet=(s.duty_undetermined||[]).map(u=>`<tr><td class="t"><a class="link mono" href="javascript:;" onclick="openDetail('${u.code}')">${u.code}</a></td><td class="t">${esc(u.shop_name||'')}</td><td class="t mono">${esc(u.wdt_tid)}</td><td class="t numtxt" style="color:var(--warning-text)">${money(u.pending)}</td></tr>`).join("");
+ const bucket=(t,obj)=>{const ks=Object.entries(obj||{}).sort((a,b)=>num(b[1].claimed)-num(a[1].claimed));
+  if(!ks.length)return "";
+  const tot=ks.reduce((s2,[,x])=>({c:s2.c+num(x.claimed),r:s2.r+num(x.received),l:s2.l+num(x.loss),n:s2.n+x.n}),{c:0,r:0,l:0,n:0});
+  return `<div class="card"><div class="card-head"><b>${t}</b></div><div class="tablewrap"><table>
+   <thead><tr><th>${t}</th><th style="text-align:right">单数</th><th style="text-align:right">申请</th><th style="text-align:right">实收</th><th style="text-align:right">未收回</th></tr></thead><tbody>
+   ${ks.map(([k,x])=>`<tr><td class="t">${esc(k)}</td><td class="t numtxt">${x.n}</td><td class="t numtxt">${money(x.claimed)}</td><td class="t numtxt">${money(x.received)}</td><td class="t numtxt" style="color:var(--danger-text)">${money(x.loss)}</td></tr>`).join("")}
+   <tr style="background:var(--surface-muted);font-weight:600"><td class="t">合计</td><td class="t numtxt">${tot.n}</td><td class="t numtxt">${money(tot.c)}</td><td class="t numtxt">${money(tot.r)}</td><td class="t numtxt" style="color:var(--danger-text)">${money(tot.l)}</td></tr>
+  </tbody></table></div></div>`};
+ $("view-stats").innerHTML=`
+  <div class="metrics">${cardsHtml(s,false)}</div>
+  <div class="g2wrap">
+   <div class="card"><div class="card-head"><b>损失归因</b></div><div style="padding:11px 14px">
+    <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px"><span>全部未收回</span><b style="color:var(--danger-text)" class="numtxt">${money(s.gap_total)}</b></div>
+    <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px"><span>预计最终亏损</span><b style="color:var(--danger-text)" class="numtxt">${money((s.customer_refund||0)-(s.claimed_total||0))}</b></div>
+    <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px"><span>已确定坏账</span><b style="color:var(--warning-text)" class="numtxt">${money(s.confirmed_bad_debt||0)}</b></div>
+    <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px"><span>责任待定悬置</span><b style="color:var(--warning-text)" class="numtxt">${money(s.pending_duty)}</b></div>
+    <div style="display:flex;justify-content:space-between;padding:6px 0;font-size:12px"><span>次品入库（举证线索）</span><b style="color:var(--warning-text)" class="numtxt">${s.defective_stockins} 单</b></div>
+    <div class="note" style="border:0;padding:0;margin:0">责任待定是最危险的一类：钱既没要回来，也没人认领。目标：把它压到 0。</div>
+   </div></div>
+   <div class="card"><div class="card-head"><b>责任待定清单</b></div><div class="tablewrap"><table>
+   <thead><tr><th>事件</th><th>店铺</th><th>订单号</th><th style="text-align:right">悬置金额</th></tr></thead>
+    <tbody>${undet||'<tr><td colspan="4" class="empty">没有责任待定的事件 ✓</td></tr>'}</tbody></table></div></div>
+  </div>
+  <div style="height:13px"></div>
+  ${bucket('快递公司',s.by_carrier)}
+  ${bucket('店铺',s.by_shop)}
+   ${bucket('登记渠道',s.by_channel)}
+   ${bucket('登记人',s.by_creator)}`;
+}
+
+async function save(i,k,val){
+ const e=EV[i];
+ try{const r=await api('/api/events/'+e.code,{method:'PUT',headers:{'Content-Type':'application/json'},
+  body:JSON.stringify({[k]:val})});EV[i]=r.event;loadAll();toast('已保存')}
+ catch(err){toast('保存失败：'+err.message);loadEvents()}
+}
+async function confirmAmount(i,input,key='claim_amount'){
+ if(!input)return;
+ const value=input.value.trim();
+ if(value===''){toast('请输入仓库赔付金额');input.focus();return}
+ if(Number(value)<0||!Number.isFinite(Number(value))){toast('仓库赔付金额格式不正确');input.focus();return}
+ const oldValue=EV[i]?.[key]??'';const label={claim_amount:'仓库赔付金额',received_amount:'实收金额',refund_amount:'顾客已赔'}[key]||'金额';
+ if(Number(value)===Number(oldValue)){input.value=oldValue;return}
+ if(!window.confirm('确认将'+label+'从 ¥'+Number(oldValue).toFixed(2)+' 修改为 ¥'+Number(value).toFixed(2)+' 吗？')){input.value=oldValue;return}
+ await save(i,key,value);
+}
+
+let newEvidence=[],newSavedCode='',newEvidenceBusy=false;
+function queueNewEvidence(files){
+ for(const file of Array.from(files||[])){
+  if(!/^image\/(png|jpeg|gif|webp)$/i.test(file.type)){toast('请上传 PNG、JPG、GIF 或 WebP 图片');continue}
+  if(file.size>20*1024*1024){toast('图片超过20MB，请压缩后上传');continue}
+  newEvidence.push({file,url:URL.createObjectURL(file),source:$('n_evidence_source')?v('n_evidence_source'):'unclassified'});
+ }
+ renderNewEvidence();
+}
+function renderNewEvidence(){const root=$('n_evidence_previews');if(!root)return;root.innerHTML=newEvidence.map((x,i)=>`<div class="new-evidence-item"><img src="${x.url}" alt="待上传截图" onclick="viewNewEvidence(${i})"><span class="name" title="${esc(x.file.name)}">${esc(x.file.name)}</span><div class="actions"><span>${EVIDENCE_SOURCES[x.source]||'待分类'}</span><button type="button" class="btn sm" onclick="removeNewEvidence(${i})">移除</button></div></div>`).join('')}
+function updateNewReturnAlert(){const box=$('n_manual_return_alert');if(!box)return;box.hidden=v('n_after_type')!=='original_return';}
+function removeNewEvidence(i){if(newEvidenceBusy)return;URL.revokeObjectURL(newEvidence[i].url);newEvidence.splice(i,1);renderNewEvidence()}
+function viewNewEvidence(i){const entry=newEvidence[i];if(!entry)return;closeEvidenceViewer();const overlay=document.createElement('div');overlay.id='evidenceViewer';overlay.className='evidence-viewer';overlay.setAttribute('role','dialog');overlay.setAttribute('aria-label','待上传截图预览');overlay.innerHTML=`<div class="image-viewer-bar"><span>${esc(entry.file.name)}</span><button class="btn" onclick="closeEvidenceViewer()">关闭预览</button></div><div class="image-viewer-stage"><img alt="待上传截图"></div>`;overlay.querySelector('img').src=entry.url;document.body.appendChild(overlay)}
+async function uploadPendingNewEvidence(){
+ if(newEvidenceBusy||!newSavedCode)return;
+ newEvidenceBusy=true;const button=$('n_save_btn');if(button)button.disabled=true;
+ const failures=[];
+ try{
+  for(const entry of [...newEvidence]){
+   const fd=new FormData();fd.append('file',entry.file);fd.append('kind','screenshot');fd.append('source_party',entry.source);
+   try{await api('/api/events/'+encodeURIComponent(newSavedCode)+'/evidence',{method:'POST',body:fd});newEvidence.splice(newEvidence.indexOf(entry),1);URL.revokeObjectURL(entry.url)}catch(err){failures.push(err.message)}
+  }
+  renderNewEvidence();
+  if(failures.length){$('n_saved_notice').textContent='登记已保存，剩余 '+failures.length+' 张截图上传失败：'+failures[0]+'。可点击重试，不会重复登记。';if(button)button.textContent='重试上传剩余凭证';await loadAll();return}
+  closeM();await loadAll();toast('登记及凭证已保存');
+ }finally{newEvidenceBusy=false;if(button)button.disabled=false}
+}
+function openNew(){
+ $('modal').classList.remove('detail-dialog');
+ if(duplicateGroups.length){showDuplicateReview(duplicateGroups);return}
+ CUR=null;newSavedCode='';newEvidenceBusy=false;newEvidence.forEach(x=>URL.revokeObjectURL(x.url));newEvidence=[];
+ clearTimeout(lookupTimer);clearTimeout(lookupRetryTimer);lookupSequence++;lookupRetryTimer=null;lookupRetryCount=0;lastLookupKey='';
+ const now=new Date(),today=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0')+'T'+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+ const du=META.duty_party.map(x=>`<option value="${x.value}" ${x.value==='undecided'?'selected':''}>${x.label}</option>`).join('');
+ const ty=META.incident_type.map(x=>`<option value="${x.value}">${x.label}</option>`).join('');
+ $('modal').innerHTML=`<h2>登记售后</h2>
+ <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:10px">输入发货物流单号，自动搜索旺店通并带出原始订单号、店铺和快递公司。也可以输入原始订单号查询；查到发货信息即可回填。</div>
+ <div class="lookup-section"><div class="section-label">旺店通核验 <span>原始订单号、发货物流单号均可单独查询，也可同时填写核对</span></div>
+  <div class="frow lookup-row">
+   <div class="fld"><label>原始订单号</label><input class="inp" id="n_tid" placeholder="输入订单号自动查询" oninput="invalidatePrefill();schedulePrefill()"></div>
+   <div class="fld"><label>发货物流单号</label><input class="inp" id="n_lno" placeholder="输入物流单号自动查询" oninput="invalidatePrefill();schedulePrefill()"></div>
+  </div>
+  <div style="margin-top:9px"><button class="btn" id="n_lookup_btn" onclick="prefill()">自动识别订单/发货信息</button><span id="n_lookup_hint" style="margin-left:8px;color:var(--text-muted);font-size:11.5px">必须查到旺店通发货依据后才能登记</span></div>
+  <div class="autofill" id="n_fill" style="display:none"></div>
+  <div class="auto-section" style="margin-top:10px"><div class="section-label">自动带出 <span>灰色字段为系统回填，可人工修正</span></div>
+  <div class="frow auto-row">
+   <div class="fld"><label>发货快递公司 <span style="color:var(--text-soft)">· 自动带出</span></label><input class="inp auto-field" id="n_carrier"></div>
+   <div class="fld"><label>店铺名称 <span style="color:var(--text-soft)">· 自动带出</span></label><input class="inp auto-field" id="n_shop" placeholder="自动带出可留空"></div>
+  </div>
+ </div>
+ </div>
+ <div class="manual-section"><div class="section-label">售后登记 <span>需要人工确认和填写</span></div>
+  <div class="frow">
+   <div class="fld"><label>登记日期（售后时间） <span style="color:var(--danger-text)">* 必填</span></label><input class="inp" id="n_date" type="datetime-local" value="${today}" required aria-required="true"></div>
+   <div class="fld"><label>售后原因 <span style="color:var(--danger-text)">* 必选</span></label><select class="inp" id="n_type" required aria-required="true" onchange="this.setCustomValidity('')"><option value="" disabled selected>请选择售后原因</option>${ty}</select></div>
+   <div class="fld"><label>售后类型 <span style="color:var(--text-soft)">· 退回类</span></label><select class="inp" id="n_after_type" onchange="updateNewReturnAlert()"><option value="">非退回类 / 未确定</option>${META.after_sales_type.map(x=>`<option value="${x.value}">${x.label}</option>`).join('')}</select></div>
+   <div class="fld"><label>责任方</label><select class="inp" id="n_duty" onchange="toggleCustomDuty('n_duty','n_duty_custom')">${du}</select><input class="inp custom-duty" id="n_duty_custom" style="display:none" placeholder="请输入责任方"></div>
+   <div class="fld"><label>仓库赔付金额 <span style="color:var(--danger-text)">* 必填</span></label><input class="inp" id="n_claim" type="number" step="0.01" min="0" required aria-required="true" placeholder="请输入仓库赔付金额"></div>
+   <div class="fld"><label>状态</label><select class="inp" id="n_status">${META.status.map(x=>`<option value="${x.value}" ${x.value==='draft'?'selected':''}>${x.label}</option>`).join('')}</select></div>
+  </div>
+ </div>
+ <div class="return-key-alert" id="n_manual_return_alert" hidden>原单退回<small>请重点核对退回商品、仓库交接与入库凭证。</small></div>
+ <div class="fld"><label>售后内容 / 事故描述</label><input class="inp" id="n_claim_txt" style="width:100%"></div>
+ <div class="fld" style="margin-top:8px"><label>判定依据（选填）</label><input class="inp" id="n_basis" style="width:100%"></div>
+ <div class="new-evidence-box"><h4>截图凭证 <span>选填，不影响登记</span></h4>
+  <div class="new-evidence-controls"><select class="inp" id="n_evidence_source" aria-label="登记凭证来源">${evidenceSourceOptions('unclassified')}</select><input type="file" id="n_evidence_file" class="inp" accept="image/png,image/jpeg,image/gif,image/webp" multiple onchange="queueNewEvidence(this.files);this.value='' "><span style="font-size:11px;color:var(--text-muted)">支持多张图片，也可直接 Ctrl+V 粘贴截图</span></div>
+  <div id="n_evidence_previews" class="new-evidence-previews"></div><div id="n_saved_notice" style="font-size:12px;color:var(--warning-text);margin-top:6px"></div>
+ </div>
+ <div style="text-align:right;margin-top:12px;display:flex;gap:8px;justify-content:flex-end">
+  <button class="btn" onclick="closeM()">取消</button>
+  <button class="btn pri" id="n_save_btn" onclick="saveNew()">保存</button></div>`;
+  applyNewPerms();
+ $('mask').classList.add('on');
+ reportPageReady();
+}
+
+let lastLookupKey='',lookupVerifiedKey='',lookupTimer=null,lookupRetryTimer=null,lookupRetryCount=0,lookupSequence=0;
+// 新登记表单：按渠道隐藏/禁用不归本渠道负责的字段（仓库赔付金额由运营填，责任方由仓库填）。
+const NEW_FIELD={n_date:'event_date',n_tid:'wdt_tid',n_carrier:'ship_carrier',n_lno:'ship_logistics_no',n_shop:'shop_name',n_type:'incident_type',n_after_type:'after_sales_type',n_claim:'claim_amount',n_claim_txt:'customer_claim',n_duty:'duty_party',n_duty_custom:'duty_party_custom',n_status:'status',n_basis:'duty_basis'};
+function applyNewPerms(){
+ if(ME.writable_fields==='*')return;
+ Object.entries(NEW_FIELD).forEach(([id,field])=>{
+  const el=$(id);if(!el||canWrite(field))return;
+  el.disabled=true;el.removeAttribute('required');el.setAttribute('aria-required','false');
+  if(id==='n_claim'){el.placeholder='由运营和客服填写（本渠道不填）';el.value=''}
+  const lbl=el.closest('.fld')&&el.closest('.fld').querySelector('label');
+  if(lbl&&id==='n_claim')lbl.insertAdjacentHTML('beforeend',' <span style="color:var(--text-soft)">· 由运营填写</span>');
+ });
+}
+function currentPrefillKey(){return v('n_tid').trim()+'|'+v('n_lno').trim()}
+function invalidatePrefill(){lookupVerifiedKey='';const box=$('n_fill');if(box&&box.style.display!=='none'){box.style.color='var(--warning-text)';box.textContent='号码已变化，正在重新核验旺店通…'};const btn=$('n_lookup_btn');if(btn)btn.disabled=false}
+function schedulePrefill(){
+ clearTimeout(lookupTimer);
+ const key=v('n_tid').trim()+'|'+v('n_lno').trim();
+ if(!key.replace('|','')||key===lastLookupKey)return;
+ lookupSequence++;clearTimeout(lookupRetryTimer);lookupRetryTimer=null;
+ lookupRetryCount=0;
+ lookupTimer=setTimeout(()=>{lastLookupKey=key;prefill(true)},600);
+}
+function scheduleLookupRetry(){
+ if(lookupRetryTimer)return;
+ lookupRetryCount++;
+ const hint=$('n_lookup_hint');
+ if(hint)hint.textContent=`旺店通暂未返回，第 ${lookupRetryCount} 次自动重试中（约30秒后）；查到前不能登记`;
+ lookupRetryTimer=setTimeout(()=>{lookupRetryTimer=null;prefill(true)},30000);
+}
+async function prefill(silent=false){
+ const tid=v('n_tid').trim(),lno=v('n_lno').trim(),sequence=++lookupSequence;
+ if(!tid&&!lno)return toast('先填订单号或快递单号');
+ lookupVerifiedKey='';
+ const hint=$('n_lookup_hint');
+ const btn=$('n_lookup_btn');if(btn)btn.disabled=true;
+ if(hint)hint.textContent='正在识别旺店通订单/发货信息，查询完成前不能登记…';
+ try{
+  const params=new URLSearchParams({logistics_no:lno,src_tid:tid});
+  const s=await api('/api/wdt/shipment?'+params);
+  if(sequence!==lookupSequence||!$('n_tid')||!$('mask').classList.contains('on'))return;
+  $('n_fill').style.display='block';
+  if(s.ok){
+   const info=s.shipment;
+   if(info.source_tid)$('n_tid').value=info.source_tid;
+   if(info.carrier)$('n_carrier').value=info.carrier;
+   if(info.logistics_no)$('n_lno').value=info.logistics_no;
+   if(info.shop_name)$('n_shop').value=info.shop_name;
+   const rd=info.return_detection||{};
+   if(rd.suggested_type&&$('n_after_type')&&!$('n_after_type').value)$('n_after_type').value=rd.suggested_type;
+   updateNewReturnAlert();
+   const returnAlert=rd.state&&rd.state!=='none'?`<div class="return-key-alert">⚠ ${esc(rd.label||'原单退回')}<small>${esc(rd.evidence||'旺店通已返回退回相关证据')}　登记前请重点核对退货入库情况</small></div>`:'';
+   const goods=(info.goods_items||[]).map(x=>`<tr><td class="mono">${esc(x.barcode||'—')}</td><td>${esc(x.name||'—')}</td><td class="numtxt">${num(x.quantity)}</td><td class="numtxt">${money(x.amount)}</td></tr>`).join('');
+   const goodsPanel=goods?`<div class="goods-panel"><div class="goods-panel-title">商品明细（旺店通发货）</div><table><thead><tr><th>条形码</th><th>名称</th><th style="text-align:right">发货数量</th><th style="text-align:right">发货金额</th></tr></thead><tbody>${goods}</tbody><tfoot><tr><td colspan="3" style="text-align:right;font-weight:600">总金额</td><td class="numtxt" style="font-weight:600">${money(info.goods_total_amount||0)}</td></tr></tfoot></table></div>`:'';
+   $('n_fill').innerHTML=returnAlert+`已从旺店通带出：原始订单号 <b>${esc(info.source_tid||'未返回')}</b>｜店铺 <b>${esc(info.shop_name||'—')}</b>｜快递 ${esc(info.carrier||'—')} ${esc(info.logistics_no||lno)}${info.src_order_no?'｜系统订单 '+esc(info.src_order_no):''}${info.stockout_no?'｜出库单 '+esc(info.stockout_no):''}${info.warehouse_name?'｜仓库 '+esc(info.warehouse_name):''}`+goodsPanel;
+   lookupRetryCount=0;clearTimeout(lookupRetryTimer);lookupRetryTimer=null;
+   lastLookupKey=v('n_tid').trim()+'|'+v('n_lno').trim();
+   lookupVerifiedKey=lastLookupKey;
+   if(btn)btn.disabled=false;
+   if(hint)hint.textContent='查询完成，订单和发货信息已回填';
+  }else{
+   if(btn)btn.disabled=false;
+   $('n_fill').style.color='var(--warning-text)';
+   $('n_fill').textContent=(s.message||'旺店通接口未返回匹配数据')+' 查询完成前不能登记。';
+   scheduleLookupRetry();
+  }
+ }catch(err){if(sequence!==lookupSequence||!$('n_tid'))return;const btn=$('n_lookup_btn');if(btn)btn.disabled=false;if(hint)hint.textContent='查询失败，正在自动重试；查询完成前不能登记';scheduleLookupRetry();if(!silent)toast('查询未成功：'+err.message)}
+}
+
+// —— 详情页：输入即同步旺店通（修复"填了发货单号不更新"）——
+let detSyncTimer=null, detSyncRetryTimer=null, detSyncRetryCount=0, detSyncSeq=0;
+function scheduleDetailSync(code){
+  clearTimeout(detSyncTimer);
+  const key=v('d_tid').trim()+'|'+v('d_lno').trim();
+  if(!key.replace('|','')){const b=$('liveSync');if(b)b.textContent='';return;}
+  detSyncTimer=setTimeout(()=>detailLookup(code),600);
+}
+async function detailLookup(code){
+  const tid=v('d_tid').trim(),lno=v('d_lno').trim();const seq=++detSyncSeq;
+  const box=$('liveSync');if(box){box.style.color='var(--accent)';box.textContent='⟳ 正在搜索旺店通订单/发货信息…';}
+  try{
+    const params=new URLSearchParams({logistics_no:lno,src_tid:tid});
+    const s=await api('/api/wdt/shipment?'+params);
+    if(seq!==detSyncSeq||!$('d_tid'))return;
+    if(s.ok){
+      const info=s.shipment;
+      if(info.source_tid&&!$('d_tid').trim())$('d_tid').value=info.source_tid;
+      if(info.logistics_no&&!$('d_lno').trim())$('d_lno').value=info.logistics_no;
+      if(info.carrier&&!$('d_carrier').trim())$('d_carrier').value=info.carrier;
+      if(box)box.innerHTML='已从旺店通带出：原始订单号 <b>'+esc(info.source_tid||'未返回')+'</b>｜店铺 <b>'+esc(info.shop_name||'—')+'</b>｜快递 '+esc(info.carrier||'—')+' '+esc(info.logistics_no||lno)+(info.src_order_no?'｜系统订单 '+esc(info.src_order_no):'')+(info.stockout_no?'｜出库单 '+esc(info.stockout_no):'')+(info.warehouse_name?'｜仓库 '+esc(info.warehouse_name):'');
+      detSyncRetryCount=0;clearTimeout(detSyncRetryTimer);detSyncRetryTimer=null;
+    }else{
+      if(box){box.style.color='var(--text-muted)';box.textContent=s.message||'旺店通接口未返回匹配数据';}
+      detailSyncRetry(code);
+    }
+  }catch(err){
+    if(seq!==detSyncSeq||!$('d_tid'))return;
+    if(box){box.style.color='var(--text-muted)';box.textContent='查询失败，稍后自动重试';}
+    detailSyncRetry(code);
+  }
+}
+function detailSyncRetry(code){
+  if(detSyncRetryTimer||detSyncRetryCount>=6)return;
+  detSyncRetryCount++;
+  const box=$('liveSync');
+  if(box)box.textContent='旺店通暂未返回，'+detSyncRetryCount+'/6 次自动重试中（约15秒后）';
+  detSyncRetryTimer=setTimeout(()=>{detSyncRetryTimer=null;detailLookup(code)},15000);
+}
+
+async function saveNew(){
+ if(newEvidenceBusy)return;if(newSavedCode){await uploadPendingNewEvidence();return}
+ const type=$('n_type');
+ if(!type.value){type.setCustomValidity('请主动选择售后类型');type.reportValidity();type.focus();return}
+ type.setCustomValidity('');
+ const claim=$('n_claim');
+ if(canWrite('claim_amount')){
+  if(!claim.value.trim()){claim.setCustomValidity('请填写仓库赔付金额');claim.reportValidity();claim.focus();return}
+  claim.setCustomValidity('');
+  if(!claim.checkValidity()){claim.reportValidity();return}
+ }else{claim.setCustomValidity('')}
+ const lookupKey=v('n_tid').trim()+'|'+v('n_lno').trim();
+ if(!lookupKey.replace('|','')){toast('请先填写发货单号或原始订单号，查到旺店通依据后才能登记');return}
+ if(lookupVerifiedKey!==lookupKey){toast('正在等待旺店通核验，未查到有效发货依据前不能登记');prefill(true);return}
+ try{
+  const dupData=await api('/api/duplicates');
+  const tid=v('n_tid').trim(),lno=v('n_lno').trim();
+  const same=dupData.groups?.find(g=>(g.records||[]).some(r=>(tid&&String(r.wdt_tid||'').trim()===tid)||(lno&&String(r.ship_logistics_no||'').trim()===lno)));
+  if(same){showDuplicateReview([same]);toast('发现相同订单号或发货单号，已暂停登记，请先核对');return}
+ }catch(err){toast('重复检查失败，暂不能登记：'+err.message);return}
+ newEvidenceBusy=true;$('n_save_btn').disabled=true;
+ try{
+   const body={event_date:v('n_date'),wdt_tid:v('n_tid'),ship_logistics_no:v('n_lno'),
+     ship_carrier:v('n_carrier'),shop_name:v('n_shop'),incident_type:v('n_type'),
+     customer_claim:v('n_claim_txt'),duty_party:v('n_duty'),duty_party_custom:v('n_duty_custom'),after_sales_type:v('n_after_type'),claim_amount:v('n_claim'),
+     status:v('n_status'),duty_basis:v('n_basis')};
+   Object.keys(body).forEach(k=>{if(!canWrite(k))delete body[k]});
+   const created=await api('/api/events',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(body)});
+  newSavedCode=created.event.code;
+  document.querySelectorAll('#modal input[id],#modal select[id],#modal textarea[id]').forEach(el=>{if(!['n_evidence_file','n_evidence_source'].includes(el.id))el.disabled=true});
+ }catch(err){toast('保存失败：'+err.message)}finally{newEvidenceBusy=false;if($('n_save_btn'))$('n_save_btn').disabled=false}
+ if(newSavedCode)await uploadPendingNewEvidence();
+}
+
+let SYNC_MSG='';
+const AUDIT_LB={create:'新建',update:'修改',delete:'删除',sync:'旺店通同步',duplicate_review:'重复核对',duplicate_merge:'重复合并',
+  stockin:'入库检测',duty:'责任改判',reply:'追加回复',import:'报表导入'};
+let auditCache={};
+async function toggleAudit(code){
+ const box=$('audit_'+code),btn=$('auditBtn_'+code);
+ if(!box)return;
+ if(box.style.display!=='none'){box.style.display='none';if(btn)btn.textContent='展开';return;}
+ box.style.display='block';if(btn)btn.textContent='收起';
+ if(auditCache[code]){box.innerHTML=auditCache[code];return;}
+ box.innerHTML='<div style="font-size:12px;color:var(--text-soft)">加载中…</div>';
+ try{
+  const r=await api('/api/events/'+encodeURIComponent(code)+'/audit');
+  const rows=r.rows||[];
+  if(!rows.length){box.innerHTML='<div style="font-size:12px;color:var(--text-soft)">暂无审计记录</div>';auditCache[code]=box.innerHTML;return;}
+  const tag=a=>`<span class="badge b-gray">${AUDIT_LB[a]||esc(a)}</span>`;
+  const html=`<div class="tablewrap"><table><thead><tr><th>时间</th><th>操作人</th><th>动作</th><th>字段</th><th>原值</th><th>新值</th></tr></thead><tbody>
+  ${rows.map(x=>`<tr>
+   <td class="t mono" style="font-size:11px">${esc((x.created_at||'').slice(0,19).replace('T',' '))}</td>
+   <td class="t" style="font-size:11px">${esc(x.actor||'—')}</td>
+   <td class="t">${tag(x.action)}</td>
+   <td class="t" style="font-size:11px">${esc(x.field||'—')}</td>
+   <td class="t numtxt" style="font-size:11px;color:var(--text-muted)">${esc(x.old_value||'—')}</td>
+   <td class="t numtxt" style="font-size:11px;color:var(--text)">${esc(x.new_value||'—')}</td>
+  </tr>`).join('')}
+  </tbody></table></div>`;
+  auditCache[code]=html;box.innerHTML=html;
+ }catch(err){box.innerHTML=`<div style="font-size:12px;color:var(--danger-text)">审计记录加载失败：${esc(err.message)}</div>`}
+}
+
+const EVIDENCE_SOURCES={warehouse:'仓库端凭证',merchant:'商家端凭证',express:'快递端凭证',buyer:'买家端凭证',unclassified:'待分类凭证'};
+let evidenceUploadSource='unclassified';
+const isEvidenceImage=f=>/\.(png|jpe?g|gif|webp)$/i.test(f.filename||'');
+const evidenceSourceOptions=selected=>Object.entries(EVIDENCE_SOURCES).map(([key,label])=>`<option value="${key}" ${key===selected?'selected':''}>${label}</option>`).join('');
+function renderEvidenceGroups(e){
+ return Object.entries(EVIDENCE_SOURCES).map(([key,label])=>{
+  const files=(e.evidence||[]).filter(f=>(EVIDENCE_SOURCES[f.source_party]?f.source_party:'unclassified')===key);
+  if(!files.length&&!['warehouse','merchant'].includes(key))return '';
+  return `<div class="evidence-source-group source-${key}"><h4>${label}<span>${files.length} 份</span></h4>${files.length?files.map(f=>`<div class="evidence-file">
+   <button type="button" data-archive-safe class="evidence-file-link" data-evidence-id="${f.id}" ${isEvidenceImage(f)?'onmouseenter="showEvidenceHover(this)" onmouseleave="hideEvidenceHover()" onfocus="showEvidenceHover(this)" onblur="hideEvidenceHover()"':''} onclick="viewEvidence(${f.id})" title="${isEvidenceImage(f)?'悬停预览，点击查看原图':'点击下载文件'}">${isEvidenceImage(f)?'▣':'▤'} ${esc(f.filename)}</button>
+   <div class="evidence-file-actions"><select class="inp" aria-label="凭证来源" onchange="setEvidenceSource(${f.id},this.value)">${evidenceSourceOptions(key)}</select><button class="btn sm" onclick="delEvidence(${f.id},'${e.code}')">删除</button></div></div>`).join(''):'<p class="evidence-empty">暂无此方凭证</p>'}</div>`;
+ }).join('');
+}
+function updateDutyEvidence(){
+ const box=$('dutyEvidenceSummary');if(!box||!$('d_duty'))return;
+ const party=v('d_duty'),label=dyLb(party,v('d_duty_custom'));
+ const guides={warehouse:['仓库工单与入库记录','验货照片、数量及仓库回复'],express:['签收与物流异常记录','快递工单、破损照片及处理回复'],shared:['仓库与快递分别提供凭证','核对双方争议与共担依据'],juxiaofan:['商家订单与售后处理记录','聚小翻反馈及判定依据'],buyer:['买家沟通与退回凭证','核对退货物流、商品与数量'],custom:['核对该责任方提供的记录','补充判定依据并分类上传凭证'],undecided:['先归集仓库端与商家端凭证','对照各方反馈，再确认责任方']};
+ box.innerHTML=`<div class="responsibility-summary"><span>当前责任方</span><strong>${esc(label||'待定')}</strong><small>${(guides[party]||guides.undecided).map(esc).join('<br>')}</small></div>`;
+}
+async function setEvidenceSource(id,source){
+ try{await api('/api/evidence/'+id+'/source',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({source_party:source})});await openDetail(CUR.code,true);toast('凭证已分类')}catch(err){toast('分类失败：'+err.message)}
+}
+const evidenceImageCache=new Map();
+let evidenceHoverSequence=0;
+async function evidenceImageUrl(id){
+ if(!evidenceImageCache.has(id)){
+  const pending=fetch('/api/evidence/'+id+'/download',{headers:authHeader()}).then(async r=>{if(!r.ok)throw new Error('图片读取失败：'+r.status);const blob=await r.blob();return URL.createObjectURL(blob)}).catch(err=>{evidenceImageCache.delete(id);throw err});
+  evidenceImageCache.set(id,pending);
+ }
+ return evidenceImageCache.get(id);
+}
+function hideEvidenceHover(){evidenceHoverSequence++;const box=$('evidenceHover');if(box)box.hidden=true}
+async function showEvidenceHover(anchor){
+ const sequence=++evidenceHoverSequence,id=Number(anchor.dataset.evidenceId);
+ let box=$('evidenceHover');if(!box){box=document.createElement('div');box.id='evidenceHover';box.className='evidence-hover';document.body.appendChild(box)}
+ box.hidden=false;box.textContent='正在载入图片…';
+ const rect=anchor.getBoundingClientRect(),width=Math.min(420,window.innerWidth-24),height=Math.min(320,window.innerHeight-24);
+ box.style.width=width+'px';box.style.left=Math.max(12,Math.min(rect.left-width-12,window.innerWidth-width-12))+'px';box.style.top=Math.max(12,Math.min(rect.top,window.innerHeight-height-12))+'px';
+ try{const url=await evidenceImageUrl(id);if(sequence!==evidenceHoverSequence)return;const img=new Image();img.src=url;img.alt='凭证图片预览';box.replaceChildren(img);const hint=document.createElement('div');hint.textContent='点击附件可查看原图';box.appendChild(hint)}catch(err){if(sequence===evidenceHoverSequence)box.textContent=err.message}
+}
+async function viewEvidence(id){
+ const f=(CUR?.evidence||[]).find(x=>x.id===id);if(!f)return;
+ hideEvidenceHover();
+ if(!isEvidenceImage(f))return downloadViaAuth('/api/evidence/'+id+'/download',f.filename);
+ try{
+  const url=await evidenceImageUrl(id);closeEvidenceViewer();
+  const overlay=document.createElement('div');overlay.id='evidenceViewer';overlay.className='evidence-viewer';overlay.setAttribute('role','dialog');overlay.setAttribute('aria-label','凭证原图');overlay.setAttribute('aria-modal','true');
+  overlay.innerHTML=`<div class="image-viewer-bar"><span>${esc(f.filename)}</span><button class="btn" onclick="document.getElementById('evidenceViewer').classList.toggle('actual-size')">原始尺寸 / 适应窗口</button><button class="btn" onclick="downloadViaAuth('/api/evidence/${id}/download',CUR.evidence.find(f=>f.id===${id}).filename)">下载原图</button><button class="btn" onclick="closeEvidenceViewer()">关闭</button></div><div class="image-viewer-stage"><img alt="凭证原图"></div>`;
+  overlay.querySelector('img').src=url;overlay.addEventListener('click',e=>{if(e.target===overlay||e.target.classList.contains('image-viewer-stage'))closeEvidenceViewer()});document.body.appendChild(overlay);overlay.querySelector('button').focus();
+ }catch(err){toast(err.message)}
+}
+function closeEvidenceViewer(){$('evidenceViewer')?.remove()}
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){if($('evidenceViewer')){e.preventDefault();e.stopImmediatePropagation();closeEvidenceViewer()}hideEvidenceHover()}},true);
+document.addEventListener('scroll',()=>{const anchor=document.querySelector('.evidence-file-link[onmouseenter]:hover');if(anchor)showEvidenceHover(anchor);else hideEvidenceHover()},true);
+function arrangeDetailWorkspace(){
+ const root=document.querySelector('#modal .detail-layout');if(!root)return;
+ const section=cls=>root.querySelector('.'+cls);
+ const left=document.createElement('div'),middle=document.createElement('div'),right=document.createElement('div');
+ left.className='detail-column order-column';middle.className='detail-column issue-column';right.className='detail-column responsibility-column';
+ left.innerHTML='<div class="detail-column-heading">订单信息<small>原始订单 · 发货 · 退货与货品</small></div>';
+ middle.innerHTML='<div class="detail-column-heading">出现的问题<small>售后原因 · 仓库赔付金额 · 仓库情况</small></div>';
+ right.innerHTML='<div class="detail-column-heading">双方责任回溯<small>责任判定 · 商家与仓库沟通 · 双方凭证</small></div>';
+ const order=section('order-group'),money=section('money-group'),warehouse=section('warehouse-group'),dispute=section('dispute-group'),evidence=section('evidence-side');
+ left.appendChild(order);
+ const issue=document.createElement('section');issue.className='detail-group issue-group';issue.innerHTML='<div class="detail-group-title">售后问题</div><div class="frow"></div>';
+ ['d_type','d_after_type'].forEach(id=>issue.querySelector('.frow').appendChild($(id).closest('.fld')));
+ issue.appendChild($('d_claim_txt').closest('.fld'));middle.append(issue,money,warehouse);
+ dispute.querySelector('.detail-group-title').innerHTML='<i class="group-mark"></i>责任判定 <span>当前责任方与判定依据</span>';
+ dispute.querySelector('.detail-group-title').after($('dutyEvidenceSummary'));
+ right.append(dispute,evidence);root.replaceChildren(left,middle,right);root.classList.add('three-columns');
+ $('modal').classList.add('detail-dialog');
+}
+async function openDetail(code,skipAuto){
+ const dirty={};
+ if(CUR?.code===code&&$('mask').classList.contains('on'))document.querySelectorAll('#modal input[id],#modal select[id],#modal textarea[id]').forEach(el=>{if(el.type!=='file'&&el.dataset.initialValue!==undefined&&el.value!==el.dataset.initialValue)dirty[el.id]=el.value});
+ try{
+  const e=await api('/api/events/'+encodeURIComponent(code));CUR=e;
+  delete auditCache[e.code];
+  const sk=e.stockin||{};
+  const ret=e.return_detection||{};
+  const replies=(e.replies||[]).map(r=>`<div class="communication-entry ${r.source}">
+    <div class="who">${r.source==='warehouse'?'仓库回复':'商家说明'} · 第${r.round_no}轮 · ${dtText(r.created_at)}</div>
+    <div class="txt">${esc(r.content)}</div></div>`).join('')
+    ||'<div class="communication-empty">暂无沟通记录，可分别记录商家说明与仓库回复。</div>';
+  const ri=(e.refund_items||[]).map(x=>`<tr><td class="t mono">${esc(x.spec_no)}</td><td class="t">${esc(x.goods_name)}</td><td class="t">${esc(x.spec_name)}</td><td class="t numtxt">${num(x.order_num)}</td><td class="t numtxt">${num(x.refund_num)}</td></tr>`).join('');
+  const si=(e.stockin_items||[]).map(x=>`<tr><td class="t mono">${esc(x.spec_no)}</td><td class="t numtxt">${num(x.goods_count)}</td><td class="t numtxt">${money(x.cost_price)}</td><td class="t">${esc(x.production_date)||'—'}</td><td class="t numtxt">${num(x.validity_days)||'—'}</td><td class="t">${esc(x.expire_date)||'—'}</td></tr>`).join('');
+  const dc=(e.duty_changes||[]).map(c=>`<div style="font-size:12px;padding:3px 0">${dyLb(c.from_party)} → <b>${dyLb(c.to_party)}</b>：${esc(c.reason)}</div>`).join('');
+  const evi=renderEvidenceGroups(e);
+
+  $('modal').innerHTML=`<h2>${esc(e.wdt_tid||'原始订单号待核验')}　<span style="font-size:12px;color:var(--text-muted);font-weight:400">${esc(e.shop_name)}</span></h2>${e.missing_fields?.length?`<div class="alert a-warn">人工补录 · 待补齐：${esc(e.missing_fields.join('、'))} ${ME.is_admin?`<button class="btn sm" onclick="openManualPending('${e.code}')">人工补齐</button>`:'（需管理员补齐）'}</div>`:''}
+  <div class="detail-layout"><div class="detail-main">
+  <section class="detail-group order-group"><div class="detail-group-title"><i class="group-mark"></i>订单与发退货 <span>旺店通原始信息与货品流转</span></div>
+  ${e.merged_into?`<div class="alert a-warn">本记录已合并归档，仅供查阅。保留记录：${esc(e.merged_into.code)} <button class="btn sm" data-archive-safe data-code="${esc(e.merged_into.code)}" onclick="openDetail(this.dataset.code,true)">查看保留记录</button></div>`:''}
+  ${e.merged_sources?.length?`<div class="sec"><h4>合并留存的原始登记（不重复计入金额）</h4>${e.merged_sources.map(r=>`<div style="margin:5px 0">${esc(r.code)} · ${esc(r.event_date)} · ${esc(TYPE_LB[r.incident_type]||r.incident_type)} · 申请 ${money(r.claim_amount)} / 实收 ${money(r.received_amount)} <button class="btn sm" data-archive-safe data-code="${esc(r.code)}" onclick="openDetail(this.dataset.code,true)">查阅原始资料</button></div>`).join('')}</div>`:''}
+  ${ret.state&&ret.state!=='none'?`<div class="alert a-warn"><b>${esc(ret.label)}</b>　${esc(ret.evidence||'')}<span style="margin-left:8px;color:var(--text-muted)">如需确认，可点击“查退货入库”复核。</span></div>`:''}
+  <div class="frow" style="margin-top:10px">
+   <div class="fld"><label>登记日期（售后时间）${String(e.event_date).length===10?' · 历史时分未记录':''}</label><input class="inp" id="d_date" type="datetime-local" value="${dtInput(e.event_date)}"></div>
+   <div class="fld"><label>原始订单号</label><input class="inp" id="d_tid" value="${esc(e.wdt_tid)}" oninput="scheduleDetailSync('${e.code}')"></div>
+   <div class="fld"><label>发货快递公司</label><input class="inp" id="d_carrier" value="${esc(e.ship_carrier)}"></div>
+   <div class="fld"><label>发货物流单号</label><input class="inp" id="d_lno" value="${esc(e.ship_logistics_no)}" oninput="scheduleDetailSync('${e.code}')"></div>
+  </div>
+
+  <div class="autofill" style="margin-top:10px">
+   <b>旺店通数据</b>（同步于 ${e.wdt_synced_at?e.wdt_synced_at.slice(0,16):'从未'}）
+   ${e.refund_count>1?`<span class="badge b-red" style="margin-left:6px">⚠ 该订单共 ${e.refund_count} 笔退款（多退）</span>`:''}
+   ：顾客已赔合计 <b>${money(e.refund_amount)}</b>｜发货快递 ${esc(e.ship_carrier||'—')} ${esc(e.ship_logistics_no||'')}｜退货物流 ${esc(e.return_carrier)} ${esc(e.return_logistics_no)}｜退 ${num(e.return_goods_count)} 件
+   ${SYNC_MSG?`<div style="margin-top:5px;color:var(--text-muted)">ℹ ${esc(SYNC_MSG)}</div>`:''}
+   <div id="liveSync" style="margin-top:5px;color:var(--accent);font-weight:500"></div>
+  </div>
+  <div class="goods-panel"><div class="goods-panel-title">发货商品明细</div>${(e.goods_items||[]).length?`<div class="tablewrap"><table><thead><tr><th>条形码</th><th>商品名称</th><th>发货数量</th><th>发货金额</th></tr></thead><tbody>${e.goods_items.map(g=>`<tr><td class="mono">${esc(g.barcode)}</td><td>${esc(g.name)}</td><td class="numtxt">${esc(g.quantity)}</td><td class="numtxt">${money(g.amount)}</td></tr>`).join('')}</tbody><tfoot><tr><td colspan="3">总金额</td><td class="numtxt">${money(e.order_amount)}</td></tr></tfoot></table></div>`:'<div class="evidence-empty">尚未获取商品明细，等待旺店通同步</div>'}</div>
+
+  <div class="sec"><h4>退款单（${e.refund_count} 笔）</h4>
+   ${e.refund_records.length?`<div class="tablewrap"><table><thead><tr><th>退款单号</th><th style="text-align:right">退款金额</th><th>原因</th><th>状态</th><th>退货物流</th><th style="text-align:right">件数</th><th>退款时间</th></tr></thead><tbody>
+   ${e.refund_records.map(r=>`<tr><td class="t mono">${esc(r.refund_no)}</td><td class="t numtxt" style="color:var(--danger-text)">${money(r.refund_amount)}</td><td class="t" style="white-space:normal;max-width:220px">${esc(r.refund_reason||'—')}</td><td class="t">${esc(r.refund_status||'—')}</td><td class="t">${esc(r.return_carrier||'—')} ${esc(r.return_logistics_no||'')}</td><td class="t numtxt">${num(r.return_goods_count)}</td><td class="t">${esc((r.refund_time||'').slice(0,16))||'—'}</td></tr>`).join('')}
+   </tbody></table></div>`:'<div style="color:var(--text-soft);font-size:12px">同步后自动带出；同一订单多笔退款会全部列在这里</div>'}</div>
+
+  <div class="sec"><h4>客户退回明细（${e.refund_items.length} 行，已合并多笔）</h4>
+   ${ri?`<div class="tablewrap"><table><thead><tr><th>规格编码</th><th>商品</th><th>规格</th><th style="text-align:right">购买</th><th style="text-align:right">退货</th></tr></thead><tbody>${ri}</tbody></table></div>`:'<div style="color:var(--text-soft);font-size:12px">同步后自动带出</div>'}</div>
+
+  </section>
+  <section class="detail-group money-group"><div class="detail-group-title"><i class="group-mark"></i>金额核对 <span>订单货值与赔付收回</span></div><div class="frow">
+   <div class="fld"><label>订单金额 · 旺店通带出</label><input class="inp auto-field" readonly value="${e.order_amount_known||num(e.order_amount)?money(e.order_amount):'待同步'}"></div>
+   <div class="fld"><label>顾客已赔</label><input class="inp" id="d_refund" type="number" step="0.01" value="${e.refund_amount}"></div>
+   <div class="fld"><label>仓库赔付金额${e.claim_amount_known===false?' · 待补':''}</label><input class="inp" id="d_claim" type="number" step="0.01" placeholder="未确认，请留空" value="${e.claim_amount_known===false?'':e.claim_amount}"></div>
+   <div class="fld"><label>实收金额</label><input class="inp" id="d_received" type="number" step="0.01" value="${e.received_amount}"></div>
+  </div><div class="money-balance">未收回 <b>¥ ${money(e.gap_amount)}</b><span>${num(e.net_loss)<0?'净收益 '+money(-e.net_loss):'净损失 '+money(e.net_loss)}</span><span class="hint" style="margin-left:12px;font-size:11px;color:var(--text-muted)">净损失 = 未收回 + (已赔 − 索赔)</span></div></section>
+  <section class="detail-group warehouse-group"><div class="detail-group-title"><i class="group-mark"></i>仓库情况 <span>入库状态 · 次品判定 · 仓库凭证</span></div>
+  <div class="fld"><label>仓库工单号</label><input class="inp" id="d_pref" value="${esc(e.warehouse_ref)}"></div>
+  <div class="sec"><h4>入库检测
+    ${sk.found?`<span class="badge ${sk.is_defective?'b-red':'b-gray'}" title="${esc(sk.warehouse)}">${sk.is_defective?'次品仓':'已入库'}</span>
+      ${sk.is_defective?'<span class="badge b-amber">次品记录 · 待结合凭证核实</span>':''}
+      <span style="font-size:11px;color:var(--text-soft);font-weight:400">状态${esc(sk.status)} · ${sk.time?sk.time.slice(0,16):''}</span>`
+     :'<span style="font-size:11px;color:var(--text-soft);font-weight:400">　未查到入库记录</span>'}
+    <button class="btn sm" style="margin-left:auto" onclick="checkStockin('${e.code}')">一键查入库</button></h4>
+   ${si?`<div class="tablewrap"><table><thead><tr><th>规格编码</th><th style="text-align:right">入库数</th><th style="text-align:right">成本</th><th>生产日期</th><th>保质期(天)</th><th>到期日</th></tr></thead><tbody>${si}</tbody></table></div>`:''}
+  </div>
+
+  </section>
+  <section class="detail-group dispute-group"><div class="detail-group-title"><i class="group-mark"></i>责任方争议点 <span>责任归属 · 判定依据 · 沟通留痕</span></div>
+  <div class="frow">
+   <div class="fld"><label>售后原因</label><select class="inp" id="d_type">${!META.incident_type.some(t=>t.value===e.incident_type)?`<option value="${esc(e.incident_type)}" selected>${esc(TYPE_LB[e.incident_type]||e.incident_type)}${e.incident_type==='wrong'?'':'（历史记录）'}</option>`:''}${META.incident_type.map(t=>`<option value="${t.value}" ${e.incident_type===t.value?'selected':''}>${t.label}</option>`).join('')}</select></div>
+   <div class="fld"><label>售后类型</label><select class="inp" id="d_after_type"><option value="">非退回类 / 未确定</option>${META.after_sales_type.map(t=>`<option value="${t.value}" ${e.after_sales_type===t.value?'selected':''}>${t.label}</option>`).join('')}</select></div>
+   <div class="fld"><label>责任方</label><select class="inp" id="d_duty" onchange="toggleCustomDuty('d_duty','d_duty_custom');updateDutyEvidence()">${META.duty_party.map(t=>`<option value="${t.value}" ${e.duty_party===t.value?'selected':''}>${t.label}</option>`).join('')}</select><input class="inp custom-duty" id="d_duty_custom" value="${esc(e.duty_party_custom||'')}" oninput="updateDutyEvidence()" style="display:${e.duty_party==='custom'?'block':'none'}" placeholder="请输入责任方"></div>
+   <div class="fld"><label>状态</label><select class="inp" id="d_status">${META.status.map(s=>`<option value="${s.value}" ${e.status===s.value?'selected':''}>${s.label}</option>`).join('')}</select></div>
+  </div>
+  <div class="fld"><label>售后内容 / 争议问题</label><textarea class="inp" id="d_claim_txt" rows="2">${esc(e.customer_claim)}</textarea></div>
+  <div class="fld" style="margin-top:9px"><label>判定依据</label><textarea class="inp" id="d_basis" rows="2" placeholder="说明争议点、各方反馈和依据">${esc(e.duty_basis)}</textarea></div>
+  <div class="communication-block"><h4>双方沟通记录</h4><div class="communication-log">${replies}</div>
+   <div class="communication-compose">
+    <select class="inp" id="r_src"><option value="owner">商家说明</option><option value="warehouse">仓库回复</option></select>
+    <button class="btn sm pri" onclick="addReply('${e.code}')">记录沟通</button>
+    <textarea class="inp" id="r_txt" rows="3" placeholder="记录本方诉求、对方回复、尚有争议和下一步处理"></textarea></div>
+   <div style="font-size:10.5px;color:var(--text-soft);margin-top:6px">记录沟通过程，保留时间与轮次。</div>
+   ${dc?`<div style="margin-top:8px"><b style="font-size:12px">责任改判记录：</b>${dc}</div>`:''}
+  </div>
+
+  <div class="sec"><h4>操作审计（谁改了什么）<button class="btn sm" style="margin-left:auto" onclick="toggleAudit('${e.code}')" id="auditBtn_${e.code}">展开</button></h4>
+   <div id="audit_${e.code}" style="display:none"></div>
+   <div style="font-size:11px;color:var(--text-soft);font-weight:400">金额、状态、责任方的每次改动都会留痕，用于对账追责</div>
+  </div>
+
+  </section>
+
+  </div><aside class="evidence-side">
+   <div id="dutyEvidenceSummary"></div>
+   <div class="evidence-title">按来源查看凭证 <small>悬停预览 · 点击原图</small></div>${evi}
+   <div class="evidence-title">上传责任凭证</div><div class="upload-box">
+    <label class="evidence-source-label" for="up_source">凭证来自哪一方</label><select class="inp" id="up_source" onchange="evidenceUploadSource=this.value">${evidenceSourceOptions(evidenceUploadSource)}</select>
+    <select class="inp" id="up_kind">${META.evidence_kind.map(k=>`<option value="${k.value}">${k.label}</option>`).join('')}</select>
+    <input type="file" id="up_file" class="inp" style="padding:4px;margin-top:7px">
+    <button class="btn pri" style="width:100%;margin-top:7px" onclick="doUpload('${e.code}')">上传凭证</button>
+    <div style="font-size:10.5px;color:var(--text-soft);margin-top:6px">也可直接 Ctrl+V 粘贴截图</div>
+   </div>
+   <div class="evidence-title">证据状态</div><div style="font-size:11.5px;line-height:1.7;color:var(--text-muted)">${e.evidence?.length||0} 个附件 · ${sk.found?'已查到入库记录':'尚未查到入库记录'} · ${e.refund_count||0} 笔退款记录</div>
+  </aside></div>
+
+  <div class="detail-footer">
+   <button class="btn" onclick="delEvent('${e.code}')" style="color:var(--danger-text)">删除</button>
+   <button class="btn" data-archive-safe onclick="closeM()">关闭</button>
+   <button class="btn pri" onclick="saveDetail('${e.code}')">保存</button></div>`;
+  $('mask').classList.add('on');
+  arrangeDetailWorkspace();
+  if(e.manual_import?.verification_source==='manual_exception')$('modal').querySelector('h2').insertAdjacentHTML('beforeend',' <span class="badge b-amber">人工补录</span>');
+  if(e.manual_import)$('modal').querySelector('.detail-footer').insertAdjacentHTML('beforebegin',manualSourceHtml(e));
+  document.querySelectorAll('#modal input[id],#modal select[id],#modal textarea[id]').forEach(el=>{if(el.type!=='file'){el.dataset.initialValue=el.value;if(Object.prototype.hasOwnProperty.call(dirty,el.id))el.value=dirty[el.id]}});
+  toggleCustomDuty('d_duty','d_duty_custom');
+  updateDutyEvidence();
+  if(e.merged_into)$('modal').querySelectorAll('input,select,textarea,button:not([data-archive-safe])').forEach(x=>x.disabled=true);
+  applyDetailPerms();
+  // —— 实时获取：打开详情时自动拉一次旺店通（退款单 + 退货物流/单号 + 发货信息）——
+  // 已有退货单号的不再重复拉，避免每次打开都写一条审计。
+  const needReturn=!(e.return_logistics_no||'').trim();
+  const stale=!e.wdt_synced_at;
+  if(!e.merged_into&&!skipAuto&&ME.can_write&&META.wdt_configured&&(e.wdt_tid||e.ship_logistics_no)&&(needReturn||stale))autoLiveSync(e.code);
+ }catch(err){toast('打开失败：'+err.message)}
+}
+
+// 详情弹层字段 → 后端字段名：按渠道把无权编辑的控件禁用（后端同样会拦，这里只做提示）。
+const DETAIL_FIELD={d_date:'event_date',d_tid:'wdt_tid',d_carrier:'ship_carrier',d_lno:'ship_logistics_no',d_refund:'refund_amount',d_claim:'claim_amount',d_received:'received_amount',d_pref:'warehouse_ref',d_type:'incident_type',d_after_type:'after_sales_type',d_duty:'duty_party',d_duty_custom:'duty_party_custom',d_status:'status',d_claim_txt:'customer_claim',d_basis:'duty_basis'};
+function applyDetailPerms(){
+ const modal=$('modal');if(!modal)return;
+ const saveBtn=modal.querySelector('.detail-footer .btn.pri');if(saveBtn&&!ME.can_write)saveBtn.style.display='none';
+ const delBtn=modal.querySelector('.detail-footer .btn[onclick^="delEvent"]');if(delBtn&&!ME.is_admin)delBtn.style.display='none';
+ const foot=modal.querySelector('.detail-footer');
+ if(foot&&ME.can_write&&!foot.querySelector('.perm-note')){
+  const note=document.createElement('span');note.className='perm-note';
+  note.style.cssText='font-size:11px;color:var(--text-soft);margin-right:auto';
+  note.textContent='当前账号：'+(ME.channel_label||'未分配渠道')+' · '+(ME.role_label||'')+'，只能修改本渠道负责的字段';
+  foot.prepend(note);
+ }
+ modal.querySelectorAll('input[id],select[id],textarea[id]').forEach(el=>{
+  const f=DETAIL_FIELD[el.id];if(!f||canWrite(f))return;
+  el.disabled=true;el.title='该字段由其他渠道负责填写，如需修改请转交对应渠道';
+ });
+ if(!ME.can_write){
+  modal.querySelectorAll('button[onclick^="checkStockin"],button[onclick^="doUpload"],button[onclick^="addReply"]').forEach(b=>{b.disabled=true;b.title='只读账号不能提交修改'});
+  // 只读账号连附件上传控件一起停用，避免「能选文件却传不上去」的错觉。
+  modal.querySelectorAll('#up_source,#up_kind,#up_file,#r_src,#r_txt').forEach(el=>{el.disabled=true});
+ }
+ // 沟通来源按渠道限定：仓库只能记仓库回复，外包客服只能记商家说明。
+ const src=$('r_src');
+ if(src&&!ME.is_admin){
+  if(isChannel('warehouse')){[...src.options].forEach(o=>{o.disabled=o.value!=='warehouse'});src.value='warehouse'}
+  else if(isChannel('outsource')){[...src.options].forEach(o=>{o.disabled=o.value!=='owner'});src.value='owner'}
+ }
+}
+let autoSyncing=false;async function autoLiveSync(code){
+ if(autoSyncing)return;autoSyncing=true;
+ const box=$('liveSync');
+ if(box)box.textContent='⟳ 正在搜索旺店通订单/发货/退货信息…';
+ try{
+  const s=await api(`/api/events/${encodeURIComponent(code)}/sync-wdt`,{method:'POST'});
+  if(!s.ok){
+   SYNC_MSG=s.message||'旺店通接口未返回匹配的发货信息';
+   if(box)box.style.color='var(--text-muted)';
+  }else if(s.stage==='refund'){
+   const e=s.event||{};
+   SYNC_MSG=`已同步退款 ${s.refund_count||1} 笔：顾客已赔 ${money(e.refund_amount)}`
+     +(e.return_logistics_no?`；退货物流 ${e.return_carrier||'—'} ${e.return_logistics_no}`:'；该单退款未退货（无退货物流）')
+     +(e.return_goods_count&&Number(e.return_goods_count)?`，退 ${e.return_goods_count} 件`:'');
+  }else{
+   SYNC_MSG=s.message||'已获取发货信息';
+  }
+ }catch(err){SYNC_MSG='实时获取失败：'+err.message}
+ finally{
+  autoSyncing=false;
+  if(CUR?.code===code&&$('mask').classList.contains('on'))await openDetail(code,true);
+ }
+}
+
+async function checkStockin(code){
+ try{
+  const r=await api(`/api/events/${encodeURIComponent(code)}/check-stockin`,{method:'POST'});
+  toast(r.message||(r.found?'已匹配入库记录':'当前查询窗口未查到入库记录'));
+  await openDetail(code);await loadAll();
+ }catch(err){toast('查询失败：'+err.message)}
+}
+async function addReply(code){
+ const txt=v('r_txt').trim();if(!txt)return toast('回复内容不能为空');
+ try{await api(`/api/events/${encodeURIComponent(code)}/replies`,{method:'POST',
+  headers:{'Content-Type':'application/json'},body:JSON.stringify({source:v('r_src'),content:txt})});
+  $('r_txt').value='';$('r_txt').dataset.initialValue='';await openDetail(code,true);await loadAll();toast('沟通已记录')}
+ catch(err){toast('追加失败：'+err.message)}
+}
+async function saveDetail(code){
+ // 只提交本渠道负责的字段，避免把禁用控件的空值/旧值一起发回去（后端也会拦越权改动）。
+ const body={...(v('d_date')!==$('d_date').dataset.initialValue?{event_date:v('d_date')}:{}),wdt_tid:v('d_tid'),ship_carrier:v('d_carrier'),
+  ship_logistics_no:v('d_lno'),incident_type:v('d_type'),after_sales_type:v('d_after_type'),duty_party:v('d_duty'),duty_party_custom:v('d_duty_custom'),
+  refund_amount:v('d_refund'),...(v('d_claim')===''&&CUR.claim_amount_known===false?{}:{claim_amount:v('d_claim')}),received_amount:v('d_received'),
+  status:v('d_status'),warehouse_ref:v('d_pref'),customer_claim:v('d_claim_txt'),duty_basis:v('d_basis')};
+ Object.keys(body).forEach(k=>{if(!canWrite(k))delete body[k]});
+ if(!Object.keys(body).length){toast('当前账号没有可修改的字段，请联系管理员调整渠道');return}
+ try{await api('/api/events/'+encodeURIComponent(code),{method:'PUT',headers:{'Content-Type':'application/json'},
+   body:JSON.stringify(body)});
+   closeM();await loadAll();toast('已保存')}
+  catch(err){toast('保存失败：'+err.message)}
+}
+async function doUpload(code){
+ const f=$('up_file').files[0];if(!f)return toast('请先选文件');
+ const fd=new FormData();fd.append('file',f);fd.append('kind',v('up_kind'));fd.append('source_party',v('up_source'));
+ try{await api(`/api/events/${encodeURIComponent(code)}/evidence`,{method:'POST',body:fd});
+  await openDetail(code);await loadAll();toast('上传成功')}
+ catch(err){toast('上传失败：'+err.message)}
+}
+async function uploadBlob(code,blob,filename,kind){
+ const fd=new FormData();
+ fd.append('file',blob,filename); fd.append('kind',kind||'screenshot');
+ fd.append('source_party',$('up_source')?v('up_source'):'unclassified');
+ await api(`/api/events/${encodeURIComponent(code)}/evidence`,{method:'POST',body:fd});
+}
+/* 全局粘贴上传：详情打开时按 Ctrl+V，剪贴板截图直接传给当前事件 */
+document.addEventListener('paste',async e=>{
+ if($('n_evidence_file')&&$('mask').classList.contains('on')){
+  const images=[...(e.clipboardData?.items||[])].filter(i=>i.type.startsWith('image/'));if(!images.length)return;e.preventDefault();
+  const stamp=dtText(new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString()).replace(/[ :]/g,'-');
+  queueNewEvidence(images.map((item,i)=>{const blob=item.getAsFile();return blob?new File([blob],'截图_'+stamp+'-'+i+'.'+(blob.type.split('/')[1]||'png'),{type:blob.type}):null}).filter(Boolean));return;
+ }
+ if(!CUR||!$('mask').classList.contains('on'))return; // 仅详情弹层打开时响应
+ const items=[...(e.clipboardData?.items||[])];
+ const img=items.find(i=>i.type.startsWith('image/'));
+ if(!img)return;
+ e.preventDefault();
+ const blob=img.getAsFile();
+ if(!blob)return toast('剪贴板里没有图片');
+ const ext=(blob.type.split('/')[1]||'png').replace('jpeg','jpg');
+ const name=`截图_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.${ext}`;
+ toast('正在上传粘贴的截图…');
+ try{
+  await uploadBlob(CUR.code,blob,name,'screenshot');
+  toast('截图已上传');
+  await openDetail(CUR.code,true);await loadAll();
+ }catch(err){toast('上传失败：'+err.message)}
+});
+
+async function delEvidence(id,code){
+ if(!confirm('删除该附件？'))return;
+ try{await api('/api/evidence/'+id,{method:'DELETE'});await openDetail(code)}catch(e){toast(e.message)}
+}
+async function delEvent(code){
+ if(!confirm('确认删除 '+code+'？不可恢复。'))return;
+ try{await api('/api/events/'+encodeURIComponent(code),{method:'DELETE'});closeM();await loadAll();toast('已删除')}
+ catch(err){toast('删除失败：'+err.message)}
+}
+async function doImport(el){
+ const f=el.files[0];if(!f)return;
+ const fd=new FormData();fd.append('file',f);
+ try{const r=await api('/api/import/legacy',{method:'POST',body:fd});
+  let msg=`旧台账导入完成：新增 ${r.created}，更新 ${r.updated}，跳过 ${r.skipped}`;
+  if(r.issue_count)msg+=`\n\n${r.issue_count} 处需确认（前 12 条）：\n`+r.issues.slice(0,12).join('\n');
+  alert(msg);
+  // 导入的多为历史月份，清空月份过滤让数据可见
+  $('fMonth').value='';
+  await loadAll();
+  toast('已显示全部月份数据');
+ }catch(e){alert('导入失败：'+e.message)}
+ el.value='';
+}
+async function doReportImport(el){
+ const f=el.files[0];if(!f)return;
+ const fd=new FormData();fd.append('file',f);
+ try{const r=await api('/api/report/import',{method:'POST',body:fd});
+  let msg=`报表回填完成：更新 ${r.updated}，未匹配 ${r.notfound}，共处理 ${r.total} 行`;
+  if(r.notfound)msg+='\n\n未匹配的行：请确认报表是从本系统「导出报表」下载后回填的（按事件编号/订单号匹配）。';
+  alert(msg);
+  $('fMonth').value='';
+  await loadAll();
+ }catch(e){alert('报表导入失败：'+e.message)}
+ el.value='';
+}
+async function backfillReturns(btn){
+ const month=v('fMonth');
+ if(btn)btn.disabled=true;
+ try{
+  toast('正在统计待补记录…');
+  const c=await api('/api/wdt/backfill-returns/candidates?'+new URLSearchParams({month:month||''}));
+  if(!c.total){toast('没有待补记录（已有退货单号的不会重复查）');return}
+  if(!window.confirm(`共有 ${c.total} 条记录缺少退货物流/退货单号。\n将从旺店通逐条查询退款单（每批 15 条，可随时中止）。\n\n开始补取吗？`))return;
+
+  const codes=c.codes||[];
+  const BATCH=15;
+  let filledCount=0,noRefundCount=0,errs=[],done=0,samples=[];
+  for(let i=0;i<codes.length;i+=BATCH){
+   const part=codes.slice(i,i+BATCH);
+   toast(`正在补取 ${done}/${codes.length}…`);
+   try{
+    const r=await api('/api/wdt/backfill-returns',{method:'POST',headers:{'Content-Type':'application/json'},
+     body:JSON.stringify({codes:part,dry_run:false})});
+    filledCount+=r.filled||0;
+    noRefundCount+=r.no_refund||0;
+    errs=errs.concat(r.error_samples||[]);
+    samples=samples.concat(r.samples||[]);
+   }catch(err){errs.push({code:part[0],error:err.message})}
+   done+=part.length;
+   await new Promise(r=>setTimeout(r,250));
+  }
+  await loadAll();
+  const preview=samples.slice(0,10).map(x=>`${x.code}　${x.return_carrier||'—'} ${x.return_logistics_no||''}`).join('\n');
+  alert(`补取完成\n\n已补到退货信息：${filledCount} 条\n无退货单（未退货/未产生）：${noRefundCount} 条\n查询失败：${errs.length} 条\n\n${preview}${samples.length>10?'\n…':''}`);
+ }catch(err){toast('补取失败：'+err.message)}
+ finally{if(btn)btn.disabled=false}
+}
+
+async function wdtTest(){
+ try{const r=await api('/api/wdt/test');alert(`旺店通连接成功，店铺 ${r.shop_count} 家`)}
+ catch(e){alert('连接失败：'+e.message)}
+}
+function closeM(){hideEvidenceHover();closeEvidenceViewer();lookupSequence++;clearTimeout(lookupTimer);clearTimeout(lookupRetryTimer);lookupTimer=null;lookupRetryTimer=null;lookupRetryCount=0;$('mask').classList.remove('on')}
+
+async function openUsers(){
+ let list={rows:[],channels:[],roles:[]};
+ try{list=await api('/api/users')}catch(e){toast('无权限或加载失败：'+e.message);return}
+ const chans=list.channels&&list.channels.length?list.channels:[{value:'warehouse',label:'仓库'},{value:'outsource',label:'外包客服'},{value:'operations',label:'运营和客服'}];
+ const roles=list.roles&&list.roles.length?list.roles:[{value:'admin',label:'管理员'},{value:'editor',label:'编辑'},{value:'viewer',label:'只读'}];
+ const opt=(arr,cur)=>arr.map(x=>`<option value="${x.value}" ${cur===x.value?'selected':''}>${x.label}</option>`).join('');
+ const rows=list.rows.map(u=>`<tr style="border-top:1px solid var(--border)">
+   <td style="padding:6px 8px"><b>${esc(u.email)}</b>${u.is_active?'':' <span class="badge b-red">已停用</span>'}</td>
+   <td><input class="inp" style="width:110px" value="${esc(u.display_name||'')}" placeholder="显示名" onchange="patchUser(${u.id},{display_name:this.value})"></td>
+   <td><select class="inp" onchange="patchUser(${u.id},{channel:this.value})"><option value="">未分配</option>${opt(chans,u.channel)}</select></td>
+   <td><select class="inp" onchange="patchUser(${u.id},{role:this.value})">${opt(roles,u.role)}</select></td>
+   <td style="text-align:right;white-space:nowrap">
+     <button class="btn sm" onclick="resetUserPw(${u.id},'${esc(u.email)}')">改密码</button>
+     <button class="btn sm" onclick="patchUser(${u.id},{is_active:${u.is_active?'false':'true'}})">${u.is_active?'停用':'启用'}</button>
+     <button class="btn sm danger" onclick="delUser(${u.id},'${esc(u.email)}')">删除</button>
+   </td></tr>`).join('')||'<tr><td colspan="5" style="padding:8px;color:var(--text-muted)">暂无其他账号</td></tr>';
+ const html=`<div style="width:820px;max-width:95vw">
+  <div style="font-size:15px;font-weight:600;margin-bottom:4px">账号管理</div>
+  <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px">账号可用「用户名」或「邮箱」登录。权限 = 角色（能做什么）× 渠道（能改哪些字段）。三个渠道都能查看全部数据，只是各自只能改自己负责的字段：<br>
+   · 仓库：入库检测、责任判定、仓库工单号、实收金额、状态<br>
+   · 外包客服：售后原因/类型、售后内容、退款原因、沟通记录<br>
+   · 运营和客服：登记新单 + 全部业务字段（含赔付金额）</div>
+  <table style="width:100%;border-collapse:collapse;font-size:12.5px">
+   <thead><tr style="color:var(--text-muted);text-align:left">
+    <th style="padding:6px 8px">账号</th><th>显示名</th><th>渠道</th><th>角色</th><th style="text-align:right">操作</th></tr></thead>
+   <tbody>${rows}</tbody></table>
+  <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px">
+   <div style="font-size:13px;font-weight:600;margin-bottom:8px">新增账号</div>
+   <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+    <input class="inp" id="nu_email" placeholder="用户名或邮箱" style="width:190px">
+    <input class="inp" id="nu_pwd" type="password" placeholder="初始密码(必填≥6位)" style="width:170px">
+    <input class="inp" id="nu_name" placeholder="显示名" style="width:130px">
+    <select class="inp" id="nu_channel"><option value="">未分配</option>${opt(chans,'')}</select>
+    <select class="inp" id="nu_role">${opt(roles,'editor')}</select>
+    <button class="btn pri" onclick="addUser()">添加</button>
+   </div>
+   <div style="font-size:11px;color:var(--text-soft);margin-top:6px">「管理员」拥有全部权限并可管理账号；「只读」仅可查看与导出。修改即刻生效，无需重启。</div>
+  </div>
+ </div>`;
+ $('modal').innerHTML=html;$('mask').classList.add('on');
+}
+async function addUser(){
+ const email=$('nu_email').value.trim(),pwd=$('nu_pwd').value;
+ const channel=$('nu_channel')?$('nu_channel').value:'',role=$('nu_role')?$('nu_role').value:'editor';
+ const name=$('nu_name')?$('nu_name').value.trim():'';
+ if(!email){toast('请填写账号');return}
+ if(pwd.length<6){toast('初始密码至少 6 位');return}
+ try{
+  await api('/api/users',{method:'POST',headers:{'Content-Type':'application/json'},
+   body:JSON.stringify({email,password:pwd,channel,role,display_name:name})});
+  toast('已添加');await openUsers();
+ }catch(e){toast('添加失败：'+e.message)}
+}
+async function patchUser(id,patch){
+ try{await api('/api/users/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(patch)});
+  toast('已更新');await openUsers();
+ }catch(e){toast('更新失败：'+e.message);await openUsers()}
+}
+async function resetUserPw(id,email){
+ const pwd=prompt('为 '+email+' 设置新密码（至少 6 位）：');
+ if(pwd===null)return;
+ if(pwd.length<6){toast('密码至少 6 位');return}
+ await patchUser(id,{password:pwd});
+}
+async function delUser(id,email){
+ if(!confirm('确认删除账号 '+email+' ？'))return;
+ try{await api('/api/users/'+id,{method:'DELETE'});toast('已删除');await openUsers();}
+ catch(e){toast('删除失败：'+e.message)}
+}
+
+async function initApp(){
+ META=await api('/api/meta');
+ $('fDuty').innerHTML='<option value="">全部责任</option>'+META.duty_party.map(x=>`<option value="${x.value}">${x.label}</option>`).join('');
+ $('fStatus').innerHTML='<option value="">全部状态</option>'+META.status.map(x=>`<option value="${x.value}">${x.label}</option>`).join('');
+ $('fMonth').value=''; // 默认不限月份：导入的历史数据(如9月)也能直接看到，刷新不丢失
+ const b=$('wdtBadge');
+ if(META.wdt_configured){b.className='badge b-sky';b.textContent='旺店通 已配置'}
+ else{b.className='badge b-gray';b.textContent='旺店通 未配置'}
+ // 当前账号
+ try{
+  const me=await api('/api/me');
+  if(me.ok){Object.assign(ME,me);applyPermissions();localStorage.setItem('claims_user',me.email);$('userChip').style.display='inline-flex';
+   if(me.dev_mode){
+     $('userChip').textContent='开发模式 · 免登录';
+     $('userChip').style.color='var(--warning-text)';
+     $('btnLogout').style.display='none';
+     $('btnChgPw').style.display='none';
+     toast('开发模式：已跳过登录鉴权');
+   }else{
+     $('userChip').style.color='';
+     $('btnLogout').style.display='inline-flex';
+     $('btnChgPw').style.display='inline-flex';
+   }
+    renderScope();}
+ }catch(_){}
+ await loadAll();
+ if(new URL(location.href).searchParams.get('register')==='1')openNew();
+ await reportPageReady();
+}
+
+(async()=>{
+ // 启动流程：先用 /api/me 探测后端是否放行。
+ //  - dev_mode=true（开发期 DISABLE_AUTH）→ 直接进主界面，登录框彻底隐藏；
+ //  - 否则按老规矩：有 token 进主界面，没 token 弹登录框。
+ try{
+  const r=await fetch('/api/me',{headers:authHeader(),cache:'no-store'});
+  if(r.ok){
+   const me=await r.json();
+   if(me.ok&&me.dev_mode){
+    DEV_MODE=true;
+    hideLogin();
+    localStorage.setItem('claims_user',me.email);
+    await initApp();
+    return;
+   }
+   if(me.ok&&localStorage.getItem('claims_token')){
+    hideLogin();await initApp();return;
+   }
+  }
+ }catch(_){}
+ if(!localStorage.getItem('claims_token')){showLogin();return;}
+ try{await initApp()}
+ catch(e){ if($('login').style.display!=='flex'){toast('初始化失败：'+e.message)} }
+})();
+$('mask').onclick=e=>{if(e.target.id==='mask')closeM()};
+document.onkeydown=e=>{if(e.key==='Escape')closeM()};
+
+/* ===== 右键菜单：登记行右键直接操作 ===== */
+(function(){
+ const menu=document.createElement('div');
+ menu.id='ctxMenu';
+ menu.style.cssText='position:fixed;display:none;z-index:1101;background:#fff;border:1px solid var(--border-strong);border-radius:10px;box-shadow:0 10px 30px rgb(16 24 40 / 16%);padding:5px;min-width:172px';
+ document.body.appendChild(menu);
+ const sep='<div style="height:1px;background:var(--border);margin:4px 6px"></div>';
+ function item(label,ico,fn,danger){
+  const d=document.createElement('div');
+  d.style.cssText=`display:flex;align-items:center;gap:8px;padding:7px 11px;border-radius:7px;font-size:12px;cursor:pointer;color:${danger?'var(--danger-text)':'var(--text-strong)'}`;
+  d.innerHTML=`<span style="width:15px;text-align:center;opacity:.75">${ico}</span>${label}`;
+  d.onmouseenter=()=>d.style.background='var(--surface-muted)';
+  d.onmouseleave=()=>d.style.background='';
+  d.onclick=()=>{hide();fn()};
+  menu.appendChild(d);
+  return d;
+ }
+ function hide(){menu.style.display='none'}
+ window.__ctxHide=hide;
+ document.addEventListener('click',e=>{if(!menu.contains(e.target))hide()});
+ document.addEventListener('scroll',hide,true);
+ document.onkeydown=e=>{if(e.key==='Escape'){closeM();hide()}};
+ async function copy(text,label){
+  try{await navigator.clipboard.writeText(text);toast(`已复制${label}`)}
+  catch(e){ // 降级：老浏览器/非安全上下文
+   const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);
+   ta.select();document.execCommand('copy');ta.remove();toast(`已复制${label}`)}
+ }
+ function dup(code){
+  const e=EV.find(x=>x.code===code);if(!e)return;
+  if(e.wdt_tid&&confirm(`该单订单号已登记过（${code}）。确认再建一条相同订单号的登记？`))openNew();
+ }
+ document.addEventListener('contextmenu',e=>{
+  const tr=e.target.closest('tbody tr');
+  if(!tr||!tr.closest('#t0'))return hide();
+  const row=EV[[...tr.parentElement.children].indexOf(tr)];
+  if(!row)return;
+  e.preventDefault();
+  menu.innerHTML='';
+  item('打开详情','⤢',()=>openDetail(row.code));
+  item('复制订单号','⧉',()=>copy(row.wdt_tid,'订单号'));
+  item('复制快递单号','⧉',()=>copy(row.ship_logistics_no,'快递单号'));
+  menu.insertAdjacentHTML('beforeend',sep);
+  if(META.wdt_configured&&ME.can_write){
+   item('实时同步旺店通','⟳',async()=>{
+    toast('正在实时同步旺店通…');
+    try{const r=await api(`/api/events/${encodeURIComponent(row.code)}/sync-wdt`,{method:'POST'});
+     toast(r.ok?(r.renamed_from?`已同步，编号改用旺店通单号 ${r.event.code}`:`同步成功：退款 ${money(r.event.refund_amount)}`):(r.message||'未查到退款单'));
+     await loadAll()}catch(err){toast('同步失败：'+err.message)}});
+   item('查退货入库','▦',async()=>{
+    toast('正在查询入库记录…');
+    try{const r=await api(`/api/events/${encodeURIComponent(row.code)}/check-stockin`,{method:'POST'});
+     toast(r.found?`已入库：${r.event.stockin.warehouse}`:'30天窗口内无入库记录');
+     await loadAll()}catch(err){toast('查询失败：'+err.message)}});
+   menu.insertAdjacentHTML('beforeend',sep);
+  }
+  if(ME.can_create)item('新建登记（引用此单）','＋',()=>dup(row.code));
+  if(ME.is_admin)item('删除此登记','✕',()=>delEvent(row.code),true);
+  // 定位：防溢出
+  menu.style.display='block';
+  const mw=menu.offsetWidth,mh=menu.offsetHeight;
+  menu.style.left=Math.min(e.clientX,innerWidth-mw-8)+'px';
+  menu.style.top=Math.min(e.clientY,innerHeight-mh-8)+'px';
+ });
+})();
+</script>
+<div id="manualPendingMask" style="display:none;position:fixed;inset:0;background:#13213b88;z-index:3000;align-items:center;justify-content:center;padding:24px" role="dialog" aria-modal="true" aria-labelledby="manualPendingTitle">
+ <div style="background:white;border-radius:18px;width:min(1180px,96vw);max-height:92vh;overflow:auto;padding:26px" id="manualPendingBody"></div>
+</div>
+<script>
+let manualPendingRows=[],manualPendingShown=false;
+function manualSourceHtml(e){return `<details style="margin:14px 0;padding:12px;border:1px solid #e3d3a7;border-radius:10px" ${e.manual_import?.amount_conflict?'open':''}><summary>原始台账来源 · ${(e.manual_import?.source_rows||[]).length} 行${e.manual_import?.amount_conflict?' · 金额存在冲突，须人工确认':''}</summary>${(e.manual_import?.source_rows||[]).map(r=>`<div style="padding:10px 0;border-bottom:1px solid #edf0f5"><b>原表第 ${esc(r.row)} 行</b> · ${esc(r.values?.['日期']||'')} · ${esc(r.values?.['售后类型']||'')} · 原填赔付金额：${esc(r.values?.['赔付金额']||'未填')}<p style="white-space:pre-wrap">${esc(r.values?.['售后内容']||'')}</p></div>`).join('')}</details>`}
+async function refreshManualPending(){
+ if(!ME.is_admin){$('manualImportAlert').innerHTML='';return}
+ try{const r=await api('/api/manual-import/pending');manualPendingRows=r.rows;
+ const count=r.rows.filter(e=>e.claim_amount_known===false).length;
+ $('manualImportAlert').innerHTML=r.total?`<div class="alert a-warn">人工补录待补齐（全部月份）${r.total} 条${count?'，其中 '+count+' 条仓库赔付金额待补 / 冲突；金额汇总仅含已知金额':''}。<button class="btn sm" onclick="openManualPending()">查看并人工补齐</button></div>`:'';
+ if(r.total&&!manualPendingShown&&!$('duplicateMask').classList.contains('on')){manualPendingShown=true;openManualPending()}
+ }catch(err){$('manualImportAlert').textContent='人工补齐清单加载失败：'+err.message}
+}
+function closeManualPending(){$('manualPendingMask').style.display='none'}
+function openManualPending(code){
+ const e=code?manualPendingRows.find(x=>x.code===code):null;
+ $('manualPendingMask').style.display='flex';
+ if(e){
+ const field=(k,label,value,type='text')=>`<label style="display:block">${k==='order_amount'?'订单金额（选填）':(k==='claim_amount'?'仓库赔付金额':label)+' * 必填'}<input class="inp" style="width:100%;margin-top:6px" id="mp_${k}" type="${type}" ${type==='number'?'min="0" step="0.01"':''} value="${esc(value??'')}"></label>`;
+ $('manualPendingBody').innerHTML=`<h2 id="manualPendingTitle">人工补齐 · ${esc(e.ship_logistics_no)}</h2><div class="alert a-warn">${esc(e.missing_fields.join('、'))}。人工填写不代表旺店通已核验。</div><p>原表第 ${esc((e.manual_import.source_rows||[]).map(x=>x.row).join('、'))} 行 · ${esc(e.event_date)}<br>${esc(e.customer_claim)}</p><div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">${field('wdt_tid','原始订单号',e.wdt_tid)}${field('shop_name','店铺名称',e.shop_name)}${field('ship_logistics_no','发货物流单号',e.ship_logistics_no)}${field('ship_carrier','发货快递公司',e.ship_carrier)}${field('claim_amount','仓库赔付金额（未确认请留空）',e.claim_amount_known===false?'':e.claim_amount,'number')}${field('order_amount','订单金额（未知请留空）',e.order_amount_known?e.order_amount:'','number')}</div><p>补齐依据 / 信息来源（保存必填）</p><textarea class="inp" style="width:100%" id="mp_reason" placeholder="例如：仓库提供的发货记录、店铺后台订单截图"></textarea><p style="display:flex;gap:10px;justify-content:flex-end"><button class="btn" onclick="openManualPending()">返回清单</button><button class="btn" onclick="closeManualPending()">稍后处理</button><button class="btn" onclick="saveManualPending('${e.code}',true,this)">查询旺店通并补齐</button><button class="btn pri" onclick="saveManualPending('${e.code}',false,this)">保存人工补齐</button></p><div id="mp_error" style="color:#c43a22"></div>`;
+ $('mp_reason').insertAdjacentHTML('beforebegin',manualSourceHtml(e));
+ }else{
+ $('manualPendingBody').innerHTML=`<h2 id="manualPendingTitle">导入完成 · 人工补齐清单</h2><p>这些记录已保留，不会因旺店通查不到而丢失。无需一次补完，关闭后可从工作台提醒重新打开。</p><div class="tablewrap"><table><thead><tr><th>原表行</th><th>售后日期</th><th>发货物流单号</th><th>需要补齐 / 核验</th><th></th></tr></thead><tbody>${manualPendingRows.map(e=>`<tr><td>${esc((e.manual_import.source_rows||[]).map(x=>x.row).join('、'))}</td><td>${esc(e.event_date)}</td><td>${esc(e.ship_logistics_no)}</td><td>${esc(e.missing_fields.join('、'))}</td><td><button class="btn sm" onclick="openManualPending('${e.code}')">补齐</button></td></tr>`).join('')||'<tr><td colspan="5">当前月份没有待补齐记录</td></tr>'}</tbody></table></div><p style="text-align:right"><button class="btn pri" onclick="closeManualPending()">知道了，稍后维护</button></p>`;
+ }
+}
+async function saveManualPending(code,verify,button){
+ const payload={verify};for(const key of ['wdt_tid','shop_name','ship_logistics_no','ship_carrier','claim_amount','order_amount','reason'])payload[key]=$('mp_'+key).value.trim();
+ const required=verify?[['ship_logistics_no','发货物流单号'],['reason','补齐依据']]:[['wdt_tid','原始订单号'],['shop_name','店铺名称'],['ship_logistics_no','发货物流单号'],['ship_carrier','发货快递公司'],['claim_amount','仓库赔付金额'],['reason','补齐依据']];
+ const missing=required.filter(([key])=>!payload[key]);
+ if(missing.length){$('mp_error').textContent='未完整补齐，不能保存：'+missing.map(x=>x[1]).join('、');$('mp_'+missing[0][0]).focus();return}
+ if(!verify&&!confirm('确认完整保存人工补齐信息？保存成功后，此条将从补齐清单移除；旺店通未核验状态会单独保留。'))return;
+ button.disabled=true;try{const result=await api('/api/manual-import/'+encodeURIComponent(code)+'/complete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});if(!result.completed)throw new Error('记录尚未完整补齐，请检查必填项');await loadAll();await refreshManualPending();if(manualPendingRows.length)openManualPending();else closeManualPending();toast('补齐完成，已从待补清单移除')}catch(err){$('mp_error').textContent=err.message;button.disabled=false}
+}
+
+/* ===== 工单看板（企业微信 @售后助手 自动登记）=====
+   并入主页面：共用 claims_token 与 api() 封装，不再单开页面。 */
+const WO_API='/api/work_orders';
+const WO_ST={pending:'待处理',processing:'处理中',waiting:'待客户',resolved:'已解决',closed:'已关闭',overdue:'超时'};
+const WO_ST_CLS={pending:'b-amber',processing:'b-sky',waiting:'b-gray',resolved:'b-green',closed:'b-gray',overdue:'b-red'};
+const WO_CAT={return:'退货',exchange:'换货',missing:'漏发',damage:'破损',wrong:'错发',other:'其他'};
+const WO_PRI={high:'高',medium:'中',low:'低'};
+const WO_TL={bot_created:'机器人建单',wecom_scan:'群聊扫描',ai_infer:'AI 推断',manual:'人工'};
+const WO_WH_CATS='damage,missing,exchange,wrong';
+let WO_ROLE='ops',WO_ROWS=[];
+const woFmt=s=>s?String(s).replace('T',' ').slice(0,16):'—';
+const woStTag=s=>`<span class="badge ${WO_ST_CLS[s]||'b-gray'}">${WO_ST[s]||esc(s)}</span>`;
+const woPriCls=p=>p==='high'?'p-high':p==='medium'?'p-medium':'p-low';
+const woDash='<span style="color:var(--text-soft)">—</span>';
+function woDebounce(fn,ms){let t;return()=>{clearTimeout(t);t=setTimeout(fn,ms)}}
+
+function woReadFilters(){
+ const p={};
+ const st=v('wo-status'),cat=v('wo-category'),pri=v('wo-priority'),owner=v('wo-owner').trim(),kw=v('wo-keyword').trim();
+ if(st)p.status=st; if(cat)p.category=cat; if(pri)p.priority=pri; if(owner)p.owner=owner; if(kw)p.keyword=kw;
+ if(WO_ROLE==='wh')p.category=WO_WH_CATS;
+ return p;
+}
+async function woLoad(){
+ const f=woReadFilters();
+ const qs=Object.keys(f).map(k=>encodeURIComponent(k)+'='+encodeURIComponent(f[k])).join('&');
+ let list,stats;
+ try{ [list,stats]=await Promise.all([api(WO_API+(qs?'?'+qs:'')),api(WO_API+'/stats')]); }
+ catch(e){ toast('工单加载失败：'+e.message); return; }
+ const s=(stats&&stats.stats)||{};
+ document.querySelectorAll('#wo-kpis .vl').forEach(el=>{el.textContent=s[el.dataset.k]??0});
+ WO_ROWS=(list&&list.rows)||[];
+ $('wo-cnt').textContent='共 '+WO_ROWS.length+' 条';
+ const hideOwner=WO_ROLE==='wh';
+ const tb=$('wo-table');
+ if(!WO_ROWS.length){ tb.innerHTML='<table><tbody><tr><td class="empty">暂无工单</td></tr></tbody></table>'; return; }
+ tb.innerHTML='<table><thead><tr><th>工单号</th><th>客户</th><th>关联订单</th><th>分类</th><th>优先级</th><th>状态</th>'
+  +(hideOwner?'':'<th>负责人</th>')+'<th>创建时间</th><th>对话</th></tr></thead><tbody>'
+  +WO_ROWS.map(r=>'<tr data-id="'+r.id+'" style="cursor:pointer">'
+   +'<td class="t"><span class="mono">'+esc(r.code)+'</span></td>'
+   +'<td class="t">'+(esc(r.customer_name)||woDash)+'</td>'
+   +'<td class="t">'+(esc(r.related_order_no)||woDash)+'</td>'
+   +'<td class="t">'+esc(WO_CAT[r.category]||r.category)+'</td>'
+   +'<td class="t wo-pri '+woPriCls(r.priority)+'">'+esc(WO_PRI[r.priority]||r.priority)+'</td>'
+   +'<td class="t">'+woStTag(r.status)+'</td>'
+   +(hideOwner?'':'<td class="t">'+(esc(r.owner)||woDash)+'</td>')
+   +'<td class="t" style="color:var(--text-muted)">'+woFmt(r.created_at)+'</td>'
+   +'<td class="t" style="color:var(--text-muted)">'+(r.timeline_count||0)+' 条</td></tr>').join('')
+  +'</tbody></table>';
+ tb.querySelectorAll('tr[data-id]').forEach(tr=>tr.onclick=()=>woOpenDetail(tr.dataset.id));
+}
+
+async function woOpenDetail(id){
+ let d; try{ d=await api(WO_API+'/'+id); }catch(e){ toast('工单不存在：'+e.message); return; }
+ const o=d.order,isWh=WO_ROLE==='wh';
+ const tl=(o.timelines||[]).map(t=>'<div class="it"><div class="dot '+esc(t.source)+'"></div><div>'
+   +'<div class="meta">'+(esc(t.author)||'系统')+' · '+esc(WO_TL[t.source]||t.source)+' · '+woFmt(t.created_at)+'</div>'
+   +'<div class="ct">'+esc(t.content)+'</div></div></div>').join('');
+ const stOpts=Object.keys(WO_ST).map(k=>'<option value="'+k+'" '+(k===o.status?'selected':'')+'>'+WO_ST[k]+'</option>').join('');
+ const priOpts=Object.keys(WO_PRI).map(k=>'<option value="'+k+'" '+(k===o.priority?'selected':'')+'>'+WO_PRI[k]+'</option>').join('');
+ const form=isWh
+  ? '<div class="wo-form"><div><label>处理状态</label><select class="inp" id="wo-f-status">'+stOpts+'</select></div>'
+   +'<div style="font-size:11px;color:var(--text-soft)">仓库端仅可更新处理状态（如「已补发」「已换货」）；负责人与内部备注不可见。</div>'
+   +'<div><button class="btn pri" style="width:100%;justify-content:center" onclick="woSave('+o.id+')">仓库更新状态</button></div></div>'
+  : '<div class="wo-form">'
+   +'<div><label>处理状态</label><select class="inp" id="wo-f-status">'+stOpts+'</select></div>'
+   +'<div><label>优先级</label><select class="inp" id="wo-f-priority">'+priOpts+'</select></div>'
+   +'<div><label>负责人</label><input class="inp" id="wo-f-owner" value="'+esc(o.owner)+'" placeholder="分配负责人"></div>'
+   +'<div><label>追加处理记录（写入时间线）</label><textarea class="inp" id="wo-f-note" rows="3" placeholder="例如：已联系客户，等仓库补发"></textarea></div>'
+   +'<div><button class="btn pri" style="width:100%;justify-content:center" onclick="woSave('+o.id+')">保存</button></div></div>';
+ $('modal').innerHTML='<button class="wo-close" onclick="closeM()" title="关闭">×</button>'
+  +'<div style="max-width:96vw">'
+  +'<div style="font-size:15px;font-weight:600;margin-bottom:12px">'+esc(o.code)
+  +' <span style="font-size:12px;font-weight:400;color:var(--text-muted)">'+esc(WO_CAT[o.category]||o.category)+' · 优先级 '+esc(WO_PRI[o.priority]||o.priority)+'</span></div>'
+  +'<div class="wo-info">'
+  +'<div class="l">客户</div><div>'+(esc(o.customer_name)||'—')+'</div>'
+  +'<div class="l">关联订单</div><div class="mono">'+(esc(o.related_order_no)||'—')+'</div>'
+  +'<div class="l">渠道</div><div>'+(esc(o.channel)||'—')+'</div>'
+  +'<div class="l">状态</div><div>'+woStTag(o.status)+' <span style="color:var(--text-muted)">'+esc(o.status_label||'')+'</span></div>'
+  +(isWh?'':'<div class="l">负责人</div><div>'+(esc(o.owner)||'—')+'</div>')
+  +'<div class="l">摘要</div><div>'+esc(o.summary||'—')+'</div>'
+  +'<div class="l">创建时间</div><div>'+woFmt(o.created_at)+'</div>'
+  +'</div>'
+  +'<div style="font-size:12.5px;font-weight:600;margin:14px 0 2px">对话时间线</div>'
+  +'<div class="wo-tl">'+(tl||'<div style="color:var(--text-soft);font-size:12px;padding:8px 0">暂无记录</div>')+'</div>'
+  +form+'</div>';
+ $('mask').classList.add('on');
+}
+
+async function woSave(id){
+ const body={status:$('wo-f-status').value};
+ if(WO_ROLE!=='wh'){
+  body.priority=$('wo-f-priority').value;
+  body.owner=$('wo-f-owner').value.trim();
+  body.note=$('wo-f-note').value.trim();
+ }
+ try{
+  await api(WO_API+'/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  closeM(); toast('已保存'); woLoad();
+ }catch(e){ toast('保存失败：'+e.message); }
+}
+
+function woExportCsv(){
+ if(!WO_ROWS.length){ toast('暂无数据'); return; }
+ const head=['工单号','客户','关联订单','分类','优先级','状态','负责人','创建时间','对话条数'];
+ const rows=WO_ROWS.map(r=>[r.code,r.customer_name,r.related_order_no,WO_CAT[r.category]||r.category,WO_PRI[r.priority]||r.priority,WO_ST[r.status]||r.status,r.owner,r.created_at,r.timeline_count]);
+ const csv='\uFEFF'+[head].concat(rows).map(a=>a.map(c=>'"'+String(c==null?'':c).replace(/"/g,'""')+'"').join(',')).join('\r\n');
+ const a=document.createElement('a');
+ a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+ a.download='work_orders_'+new Date().toISOString().slice(0,10)+'.csv';
+ document.body.appendChild(a); a.click(); a.remove();
+ setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+}
+
+(function woBind(){
+ const box=$('wo-role');
+ if(!box)return;
+ box.onclick=e=>{
+  const b=e.target.closest('button[data-r]'); if(!b)return;
+  WO_ROLE=b.dataset.r;
+  [].forEach.call(box.children,x=>x.classList.toggle('on',x===b));
+  $('wo-category').disabled=WO_ROLE==='wh';
+  $('wo-owner').style.display=WO_ROLE==='wh'?'none':'';
+  woLoad();
+ };
+ ['wo-status','wo-category','wo-priority'].forEach(id=>$(id).addEventListener('change',woLoad));
+ $('wo-owner').addEventListener('input',woDebounce(woLoad,350));
+ $('wo-keyword').addEventListener('input',woDebounce(woLoad,350));
+})();
+</script>
+</body>
+</html>
