@@ -20,8 +20,18 @@ else
   dc() { sudo docker compose "$@"; }
 fi
 
+# .env 通常是 root:600，普通用户读不到；非 root 时回退到 sudo cat
+env_get() {
+  local key=$1 val=""
+  val=$(grep -E "^${key}=" .env 2>/dev/null | head -1 | cut -d= -f2- | tr -d '\r' || true)
+  if [ -z "$val" ] && [ "$(id -u)" != "0" ]; then
+    val=$(sudo grep -E "^${key}=" .env 2>/dev/null | head -1 | cut -d= -f2- | tr -d '\r' || true)
+  fi
+  printf '%s' "$val"
+}
+
 # 端口从 .env 读，读不到用 8021
-PORT=$(grep -E '^APP_PORT=' .env 2>/dev/null | cut -d= -f2 | tr -d '\r' || true)
+PORT=$(env_get APP_PORT)
 PORT=${PORT:-8021}
 BASE="http://127.0.0.1:${PORT}"
 
@@ -48,9 +58,10 @@ done
 [ "$OK" = "1" ] && echo "  healthz OK" || { echo "  healthz FAIL（60 秒内未就绪）"; dc logs --tail=40 app; exit 1; }
 curl -sf -o /dev/null "${BASE}/" && echo "  首页 OK" || { echo "  首页 FAIL"; exit 1; }
 
-set -a; . ./.env; set +a
+ADMIN_EMAIL_V=$(env_get ADMIN_EMAIL)
+ADMIN_PASSWORD_V=$(env_get ADMIN_PASSWORD)
 TOKEN=$(curl -s -X POST "${BASE}/api/login" -H 'Content-Type: application/json' \
-  -d "{\"email\":\"$ADMIN_EMAIL\",\"password\":\"$ADMIN_PASSWORD\"}" \
+  -d "{\"email\":\"${ADMIN_EMAIL_V}\",\"password\":\"${ADMIN_PASSWORD_V}\"}" \
   | python3 -c 'import sys,json;print(json.load(sys.stdin).get("token",""))' 2>/dev/null || true)
 [ -n "$TOKEN" ] && echo "  管理员登录 OK" || { echo "  管理员登录 FAIL"; exit 1; }
 curl -sf -H "Authorization: Bearer $TOKEN" "${BASE}/api/page-version" > /dev/null && echo "  page-version OK" || { echo "  page-version FAIL"; exit 1; }
