@@ -1,0 +1,8 @@
+# 生产镜像模式覆盖层。
+# 与根目录 docker-compose.yml 叠加使用，把 app 的镜像来源从「本地构建」改为「已发布镜像」：
+#   docker compose -f docker-compose.yml -f deploy/override-image.yml pull app
+#   docker compose -f docker-compose.yml -f deploy/override-image.yml up -d --no-build app
+# APP_IMAGE 由 deploy/update.sh 写入 .env。
+services:
+  app:
+    image: ${APP_IMAGE:?请在 .env 中设置 APP_IMAGE（ghcr.io/jinfenghua1990/jxf:latest）}
