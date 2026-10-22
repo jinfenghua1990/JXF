@@ -22,7 +22,22 @@
 set -uo pipefail
 export PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/bin:/usr/sbin:/sbin
 
-APP_DIR=$(cd -- "$(dirname -- "$0")/.." && pwd)
+# 本脚本会在运行途中被 git reset --hard 换成新版本。bash 是按字节偏移边读边执行
+# 脚本的，文件在脚下被替换会导致后面的语句错乱（曾出现 prune 被跳过）。
+# 所以先把自己拷到 /tmp，再从副本执行，运行期间文件内容不再变化。
+if [ -z "${CLAIMS_AUTOUPDATE_CHILD:-}" ]; then
+  _APP_DIR=$(cd -- "$(dirname -- "$0")/.." && pwd)
+  _SELF_COPY="/tmp/claims_autoupdate.$$.sh"
+  cp -- "$0" "$_SELF_COPY" || exit 1
+  export CLAIMS_AUTOUPDATE_CHILD=1 APP_DIR="$_APP_DIR"
+  exec bash "$_SELF_COPY" "$@"
+fi
+# 只删自己那份副本，绝不碰仓库里的原文件
+case "$0" in
+  /tmp/claims_autoupdate.*.sh) trap 'rm -f "$0"' EXIT ;;
+esac
+
+APP_DIR=${APP_DIR:?APP_DIR 未传递}
 BRANCH=${BRANCH:-main}
 LOG=$APP_DIR/backups/autoupdate.log
 LOCK=/tmp/claims_autoupdate.lock
