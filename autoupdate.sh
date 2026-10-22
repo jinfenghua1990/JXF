@@ -30,6 +30,10 @@ for a in "$@"; do
 done
 
 mkdir -p "$APP_DIR/backups"
+# 日志超过 1MB 就只保留最近 500 行
+if [ -f "$LOG" ] && [ "$(wc -c <"$LOG" 2>/dev/null || echo 0)" -gt 1048576 ]; then
+  tail -n 500 "$LOG" > "$LOG.tmp" && mv "$LOG.tmp" "$LOG"
+fi
 log() { echo "[$(date '+%F %T')] $*" | tee -a "$LOG"; }
 
 cd "$APP_DIR" || { echo "无法进入 $APP_DIR"; exit 1; }
