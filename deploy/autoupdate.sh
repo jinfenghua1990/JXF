@@ -23,7 +23,7 @@ set -uo pipefail
 export PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/bin:/usr/sbin:/sbin
 
 APP_DIR=$(cd -- "$(dirname -- "$0")/.." && pwd)
-BRANCH=main
+BRANCH=${BRANCH:-main}
 LOG=$APP_DIR/backups/autoupdate.log
 LOCK=/tmp/claims_autoupdate.lock
 DOCKER=${DOCKER:-/usr/local/bin/docker}
