@@ -56,12 +56,13 @@ set_env_image() {
 }
 
 pull_retry() {
-  local max=4 n=1 delay
+  local max=4 n=1 delay tmo=""
+  command -v timeout >/dev/null 2>&1 && tmo="timeout 1800"
   while [ "$n" -le "$max" ]; do
-    log "拉取镜像（$n/$max）..."
-    if dc pull --quiet app; then return 0; fi
+    log "拉取镜像（$n/$max，单次最长 30 分钟）..."
+    if $tmo dc pull --quiet app; then return 0; fi
     delay=$((n * 10))
-    log "拉取失败，${delay}s 后重试；现有容器未受影响"
+    log "拉取失败或超时，${delay}s 后重试；现有容器未受影响"
     sleep "$delay"; n=$((n + 1))
   done
   return 1
@@ -73,32 +74,31 @@ if [ -n "$OLD_IMAGE" ] && [ "$OLD_IMAGE" = "$TARGET" ] && [ -n "$CURRENT_ID" ]; 
   log "APP_IMAGE 已是 $TARGET，仍需确认容器是否在跑该镜像"
 fi
 
-# ---------- 备份 ----------
+# ---------- 1. 先拉镜像：拉不到就什么也不动 ----------
+log "[1/6] 固定目标镜像并拉取：$TARGET"
+set_env_image "$TARGET" || die "写入 .env 失败"
+if ! pull_retry; then
+  [ -n "$OLD_IMAGE" ] && set_env_image "$OLD_IMAGE"
+  die "镜像拉取失败，已恢复原配置，现有容器与数据均未受影响"
+fi
+
+# ---------- 2. 备份 ----------
 STAMP=$(date +%Y%m%d-%H%M%S)
 BACKUP_DIR=$APP_DIR/backups/update-$STAMP
 mkdir -p "$BACKUP_DIR" || die "无法创建备份目录"
 
-log "[1/6] 备份数据库..."
+log "[2/6] 备份数据库..."
 if ! docker exec claims-db sh -c 'pg_dump -U claims -d claims -Fc --no-owner' > "$BACKUP_DIR/db.dump" 2>"$BACKUP_DIR/db.err"; then
   rm -rf "$BACKUP_DIR"
-  die "数据库备份失败，未做任何变更（详见 db.err）"
+  die "数据库备份失败，未切换容器"
 fi
 [ -s "$BACKUP_DIR/db.dump" ] || { rm -rf "$BACKUP_DIR"; die "数据库备份为空，已停止"; }
 
-log "[2/6] 备份 data/..."
+log "[3/6] 备份 data/..."
 if ! tar -C "$APP_DIR/data" -czf "$BACKUP_DIR/data.tar.gz" . 2>/dev/null; then
   log "⚠ data/ 备份失败（不影响继续，但请留意）"
 else
   log "    data 备份 $(du -h "$BACKUP_DIR/data.tar.gz" | cut -f1)"
-fi
-
-# ---------- 切换镜像 ----------
-log "[3/6] 固定目标镜像：$TARGET"
-set_env_image "$TARGET" || die "写入 .env 失败"
-
-if ! pull_retry; then
-  [ -n "$OLD_IMAGE" ] && set_env_image "$OLD_IMAGE"
-  die "镜像拉取失败，已恢复原配置，现有容器未切换"
 fi
 
 log "[4/6] 重建 app 容器..."

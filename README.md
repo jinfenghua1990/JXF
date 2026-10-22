@@ -55,6 +55,24 @@ autoupdate.sh       从 GitHub 拉最新代码并自动部署（失败回滚）
 
 ## 部署
 
+### 生产：镜像发布（推荐）
+
+代码推送到 `main` → GitHub Actions 自动构建并推送到 GHCR
+（`ghcr.io/jinfenghua1990/jxf:sha-<SHA>` 与 `:latest`）→ NAS 拉镜像部署，**不在 NAS 上构建**。
+
+```bash
+sudo bash /volume1/docker/claims-system/deploy/update.sh                 # 更新到 .env 里 APP_IMAGE 的版本
+sudo bash /volume1/docker/claims-system/deploy/update.sh ghcr.io/jinfenghua1990/jxf:sha-<SHA>
+```
+
+`deploy/update.sh` 的流程：备份数据库（`pg_dump`）与 `data/` → 拉镜像（失败重试，不动现有容器）
+→ 切换 `APP_IMAGE` → 重建 app → 等健康检查 → **失败自动切回上一个镜像**。
+
+镜像模式通过 `deploy/override-image.yml` 叠加到 `docker-compose.yml`，只覆盖 `app.image`，
+数据库/备份服务配置完全共用，不维护第二份 compose。
+
+### 本地构建（应急 / 离线）
+
 ```bash
 sudo bash /volume1/docker/claims-system/deploy.sh
 ```
@@ -63,27 +81,28 @@ sudo bash /volume1/docker/claims-system/deploy.sh
 → `docker compose build`（镜像内还有一层门禁）→ `up -d` → 冒烟测试
 （首页 / healthz / 管理员登录 / page-version / me）。
 
-任一步失败则中止，旧容器继续服务。
-
-**回滚**：把 `backups/deploy-<时间戳>/` 里的文件拷回原位，重跑 `deploy.sh`。
+任一步失败则中止，旧容器继续服务。**回滚**：把 `backups/deploy-<时间戳>/` 里的文件拷回原位，重跑 `deploy.sh`。
 
 ---
 
-## 自动更新（从 GitHub）
+## 自动同步（跟随 GitHub main）
 
-`autoupdate.sh` 会拉取 `origin/main`，与本地 HEAD 比对：
+`deploy/autoupdate.sh` 每 30 分钟由 cron 触发：
 
-- 无变化 → 直接退出
-- 只有 `.md` 文档变更 → 仅同步代码，**不重启服务**
-- 有代码变更 → `reset --hard` → `deploy.sh`；冒烟失败自动回滚到上一个 commit 并重新部署
+1. 查 GitHub API 取 `main` 最新 commit SHA
+2. 读运行中容器镜像的 `org.opencontainers.image.revision` 标签
+3. 相同 → 退出；不同 → 确认该 SHA 的镜像已发布（`docker manifest inspect`）
+4. 调 `deploy/update.sh` 部署 `sha-<SHA>` 不可变镜像
 
 ```bash
-sudo bash autoupdate.sh              # 正常更新
-sudo bash autoupdate.sh --dry-run    # 只看会做什么
-sudo bash autoupdate.sh --force      # 强制重新部署
+sudo bash deploy/autoupdate.sh            # 立即检查
+sudo bash deploy/autoupdate.sh --dry-run  # 只报告
 ```
 
 日志：`backups/autoupdate.log`
+
+**设计要点**：NAS 上不跑 git、不构建，只拉已发布的不可变镜像；按 SHA 比对而不是按 `latest` 标签，
+避免「代码推了但镜像还没构建完」导致的无谓重启。
 
 **安全前提**：仓库是公开的，能往 `main` 推代码就等于能改生产。请保护账号与分支权限。
 
