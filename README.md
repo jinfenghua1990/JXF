@@ -121,6 +121,22 @@ crontab（DSM 写在 `/etc/crontab`）：
 
 ---
 
+## 日常运维
+
+```bash
+cd /volume1/docker/claims-system
+
+sudo bash deploy/autoupdate.sh --dry-run   # 现在跑的是哪个版本、有没有新提交
+sudo bash deploy.sh                        # 手动部署一次
+tail -20 backups/autoupdate.log            # 最近几轮自动更新记录
+sudo docker compose logs -f --tail=100 app # 应用日志
+sudo docker compose ps                     # 容器状态
+```
+
+`backups/` 下保留最近 20 份 `autoupdate-*` 与 `deploy-*` 备份，更早的由自动更新脚本清理。
+
+---
+
 ## 主要接口
 
 | 分组 | 接口 |
