@@ -1,0 +1,29 @@
+# 构建上下文瘦身：这些内容不该进镜像，也不该拖慢构建
+.git
+.github
+.gitignore
+.gitattributes
+
+# 运行时数据与备份，绝不能烤进镜像层
+data
+backups
+*.db
+*.sqlite*
+
+# 密钥
+.env
+.env.*
+!.env.example
+
+# 与镜像无关的脚本与文档
+deploy
+deploy.sh
+scripts
+*.md
+*.log
+
+# 本地产物
+node_modules
+**/__pycache__
+*.pyc
+.DS_Store

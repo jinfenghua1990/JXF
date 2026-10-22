@@ -33,7 +33,9 @@ backend/tests/      回归与自检脚本
 tools/check_inline_js.js   前端内联 JS 语法门禁（部署时强制执行）
 scripts/git.sh      NAS 无 git，用 alpine/git 容器操作本仓库
 deploy.sh           一键部署：备份 → JS 校验 → 构建 → 重启 → 冒烟
-autoupdate.sh       从 GitHub 拉最新代码并自动部署（失败回滚）
+deploy/autoupdate.sh  自动同步 GitHub main（拉源码 → 构建 → 失败回滚）
+deploy/update.sh    可选：拉取 GHCR 已构建镜像部署（见「镜像模式」）
+deploy/override-image.yml  镜像模式的 compose 叠加层
 ```
 
 ---
@@ -55,54 +57,65 @@ autoupdate.sh       从 GitHub 拉最新代码并自动部署（失败回滚）
 
 ## 部署
 
-### 生产：镜像发布（推荐）
-
-代码推送到 `main` → GitHub Actions 自动构建并推送到 GHCR
-（`ghcr.io/jinfenghua1990/jxf:sha-<SHA>` 与 `:latest`）→ NAS 拉镜像部署，**不在 NAS 上构建**。
-
-```bash
-sudo bash /volume1/docker/claims-system/deploy/update.sh                 # 更新到 .env 里 APP_IMAGE 的版本
-sudo bash /volume1/docker/claims-system/deploy/update.sh ghcr.io/jinfenghua1990/jxf:sha-<SHA>
-```
-
-`deploy/update.sh` 的流程：备份数据库（`pg_dump`）与 `data/` → 拉镜像（失败重试，不动现有容器）
-→ 切换 `APP_IMAGE` → 重建 app → 等健康检查 → **失败自动切回上一个镜像**。
-
-镜像模式通过 `deploy/override-image.yml` 叠加到 `docker-compose.yml`，只覆盖 `app.image`，
-数据库/备份服务配置完全共用，不维护第二份 compose。
-
-### 本地构建（应急 / 离线）
+### 生产：NAS 本地构建（当前使用）
 
 ```bash
 sudo bash /volume1/docker/claims-system/deploy.sh
 ```
 
 流程：备份到 `backups/deploy-<时间戳>/` → `node tools/check_inline_js.js` 前端语法门禁
-→ `docker compose build`（镜像内还有一层门禁）→ `up -d` → 冒烟测试
-（首页 / healthz / 管理员登录 / page-version / me）。
+→ `docker compose build`（镜像内还有一层门禁）→ `up -d` → 冒烟
+（healthz / 首页 / 管理员登录 / page-version / me / 待办接口）。
 
 任一步失败则中止，旧容器继续服务。**回滚**：把 `backups/deploy-<时间戳>/` 里的文件拷回原位，重跑 `deploy.sh`。
+
+### 镜像模式（可选，当前网络不可用）
+
+代码推送到 `main` → GitHub Actions 构建并推 GHCR（`sha-<SHA>` 与 `latest`）→ NAS 只拉镜像、不构建。
+
+```bash
+sudo bash deploy/update.sh ghcr.io/jinfenghua1990/jxf:sha-<SHA>
+```
+
+**为什么当前没启用**：实测 NAS 到 `ghcr.io` 的 Blob 下载只有 **23 KB/s**——registry 的 API 本身很快
+（`/v2/` 与 token 都在 0.6 秒内返回），慢的是层数据的 CDN，66 MB 的镜像要拉一小时以上且中途会断。
+试过 `ghcr.nju.edu.cn`（清单 2 秒能取到，层数据同样卡死）、`ghcr.m.daocloud.io`（`/v2/` 返回 401，未继续验证）。
+换到能正常访问 ghcr 的网络时，这套脚本可以直接用。
+
+`deploy/update.sh` 的流程：拉镜像（失败重试，不动现有容器）→ 备份数据库（`pg_dump`）与 `data/`
+→ 切换 `APP_IMAGE` → 重建 app → 等健康检查 → **失败自动切回上一个镜像**。
+镜像模式通过 `deploy/override-image.yml` 叠加到 `docker-compose.yml`，只覆盖 `app.image`，
+数据库/备份服务配置完全共用，不维护第二份 compose。
 
 ---
 
 ## 自动同步（跟随 GitHub main）
 
-`deploy/autoupdate.sh` 每 30 分钟由 cron 触发：
+`deploy/autoupdate.sh` 由 cron 每 30 分钟触发：
 
-1. 查 GitHub API 取 `main` 最新 commit SHA
-2. 读运行中容器镜像的 `org.opencontainers.image.revision` 标签
-3. 相同 → 退出；不同 → 确认该 SHA 的镜像已发布（`docker manifest inspect`）
-4. 调 `deploy/update.sh` 部署 `sha-<SHA>` 不可变镜像
+1. `git fetch origin main`（借 `alpine/git` 容器，NAS 本身没有 git）
+2. 本地 `HEAD` 与 `origin/main` 相同 → 退出，什么都不做
+3. 不同 → 备份 `api.py` 与静态页到 `backups/autoupdate-<时间戳>/`，`reset --hard` 到新版
+4. 跑 `deploy.sh`（门禁 → 构建 → 重启 → 冒烟）
+5. 失败 → 回到旧 commit 重新构建，**不留半死状态**
 
 ```bash
 sudo bash deploy/autoupdate.sh            # 立即检查
-sudo bash deploy/autoupdate.sh --dry-run  # 只报告
+sudo bash deploy/autoupdate.sh --dry-run  # 只报告有哪些新提交
 ```
 
-日志：`backups/autoupdate.log`
+crontab（DSM 写在 `/etc/crontab`）：
 
-**设计要点**：NAS 上不跑 git、不构建，只拉已发布的不可变镜像；按 SHA 比对而不是按 `latest` 标签，
-避免「代码推了但镜像还没构建完」导致的无谓重启。
+```
+*/30 * * * * root bash /volume1/docker/claims-system/deploy/autoupdate.sh >/dev/null 2>&1
+```
+
+日志：`backups/autoupdate.log`（超过 2 MB 自动只保留最后 2000 行）
+
+**设计要点**：按 commit 比对而不是按 `latest` 标签，避免无谓重启；`flock` 防重入，
+上一轮构建没跑完不会叠加；`git reset --hard` 不碰 `.gitignore` 里的 `.env` / `data/` / `backups/`，
+业务数据与密钥不受影响。NAS 到 GitHub 的 git 协议实测 2.5 秒完成 `ls-remote`，
+所以这条路比拉镜像稳得多。
 
 **安全前提**：仓库是公开的，能往 `main` 推代码就等于能改生产。请保护账号与分支权限。
 
@@ -143,5 +156,7 @@ sudo bash deploy/autoupdate.sh --dry-run  # 只报告
 ## 已知限制
 
 - NAS 未安装 git，所有 git 操作走 `scripts/git.sh`（`alpine/git` 容器）
+- NAS 上 `docker` 和 `node` 都在 `/usr/local/bin`，不在 admin 用户的默认 PATH 里；
+  `deploy.sh` / `deploy/autoupdate.sh` 开头都会显式 `export PATH`，直接跑不会被「command not found」坑
 - 前端为单文件单页，`index.html` 改动后必须过 `check_inline_js.js`，否则部署会中止
 - 旺店通查询窗口上限 30 天（超过报 `code=2180` 且静默返回空）
