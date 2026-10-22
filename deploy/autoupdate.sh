@@ -38,6 +38,16 @@ if [ -f "$LOG" ] && [ "$(wc -c <"$LOG" 2>/dev/null || echo 0)" -gt 2097152 ]; th
 fi
 log() { echo "[$(date '+%F %T')] $*" | tee -a "$LOG"; }
 
+# 只保留最近 20 份备份，避免每轮更新都把磁盘堆满
+prune_backups() {
+  local pat d
+  for pat in "autoupdate-*" "deploy-*"; do
+    ls -1dt "$APP_DIR"/backups/$pat 2>/dev/null | tail -n +21 | while IFS= read -r d; do
+      rm -rf "$d"
+    done
+  done
+}
+
 # 防重入：上一轮构建还没跑完就跳过
 exec 9>"$LOCK"
 flock -n 9 || { log "上一轮还在跑，跳过"; exit 0; }
@@ -99,6 +109,7 @@ fi
 
 # ---------- 4. 构建 + 重启 + 冒烟 ----------
 if bash "$APP_DIR/deploy.sh" >>"$LOG" 2>&1; then
+  prune_backups
   log "✓ 更新成功，当前版本 ${REMOTE:0:7}（备份：$BK）"
   exit 0
 fi
