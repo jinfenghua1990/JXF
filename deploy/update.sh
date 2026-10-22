@@ -46,6 +46,8 @@ set_env_image() {
   local image=$1 tmp="$ENV_FILE.tmp.$$"
   if ! awk -v image="$image" '
     BEGIN { c = 0 }
+    # 已注释的 APP_IMAGE 也原地替换，避免越写越多行
+    /^# *APP_IMAGE=/ { c++; print "APP_IMAGE=" image; next }
     /^APP_IMAGE=/ { c++; print "APP_IMAGE=" image; next }
     { print }
     END { if (c > 1) exit 42; if (c == 0) print "APP_IMAGE=" image }
