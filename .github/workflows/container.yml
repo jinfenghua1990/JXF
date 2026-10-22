@@ -1,0 +1,71 @@
+name: Container
+
+# 推送 main 即产出不可变镜像（sha-<SHA>）并移动 latest；
+# 打 v* 标签额外产出发布版标签。NAS 只拉镜像，不在本地构建。
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+concurrency:
+  group: container-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE: ghcr.io/${{ github.repository }}
+
+jobs:
+  build:
+    name: Build and push image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve tags
+        id: meta
+        shell: bash
+        run: |
+          img="ghcr.io/${GITHUB_REPOSITORY,,}"
+          echo "image=$img" >> "$GITHUB_OUTPUT"
+          echo "sha_tag=sha-${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          build-args: |
+            PIP_INDEX_URL=https://pypi.org/simple
+          tags: |
+            ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.sha_tag }}
+            ${{ steps.meta.outputs.image }}:latest
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.version=${{ github.ref_name }}
+
+      - name: Summary
+        shell: bash
+        run: |
+          {
+            echo "### 镜像已发布"
+            echo
+            echo '`${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.sha_tag }}`'
+            echo
+            echo '`${{ steps.meta.outputs.image }}:latest` 已指向该版本'
+          } >> "$GITHUB_STEP_SUMMARY"

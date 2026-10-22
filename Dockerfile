@@ -15,8 +15,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 # 依赖层单独缓存，改代码不会触发重装
+# 默认走清华源（国内 NAS 构建快）；CI 在境外，构建时用 --build-arg 覆盖为 pypi.org
+ARG PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
 COPY backend/requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir --index-url https://pypi.tuna.tsinghua.edu.cn/simple -r /app/requirements.txt
+RUN pip install --no-cache-dir --index-url "$PIP_INDEX_URL" -r /app/requirements.txt
 
 COPY VERSION /app/VERSION
 COPY backend /app/backend
