@@ -335,6 +335,7 @@ a.link:hover{text-decoration:underline}
 
     <div class="toolbar">
       <button class="btn pri" data-perm="create" onclick="openNew()">+ 登记售后</button>
+      <button class="btn sm" onclick="openTodo()" title="待核验 / 待补金额 / 待定责 / 未入库 / 待跟进">☰ 待办 <span id="todoBadge"></span></button>
       <span class="tb-sep"></span>
       <span class="tb-act" data-perm="admin">
         <button class="btn sm" onclick="$('fImport').click()">⇪ 导入旧台账</button>
@@ -448,6 +449,14 @@ const dtText=v0=>String(v0||'').replace('T',' ').slice(0,16);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const num=x=>parseFloat(x)||0;
 const money=x=>num(x).toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2});
+// 金额异常：索赔/客赔超过订单，或实收超过索赔 —— 与后端 /api/todo 的「金额异常」口径一致
+const amountAnomaly=e=>{
+ const o=num(e.order_amount),c=num(e.claim_amount),r=num(e.refund_amount),rc=num(e.received_amount);
+ if(o>0&&c>o)return `索赔 ${money(c)} 高于订单 ${money(o)}`;
+ if(o>0&&r>o)return `顾客已赔 ${money(r)} 高于订单 ${money(o)}`;
+ if(c>0&&rc>c)return `实收 ${money(rc)} 高于索赔 ${money(c)}`;
+ return '';
+};
 let META=null,EV=[],CUR=null,busy=false,lastStats=null,VIEW='board';
 let duplicateGroups=[],duplicateReviewBusy=false;
 
@@ -525,8 +534,9 @@ function applyPermissions(){
 // 所以把渠道显式顶在右上角，避免仓库/客服互相覆盖口径。
 const SCOPE_HINT={
  warehouse:'仓库视角：只能修改「入库检测 / 责任判定 / 仓库工单号 / 实收金额 / 状态」。台账全量可见。',
- outsource:'外包客服视角：只能修改「售后原因与类型 / 售后内容 / 退款原因 / 沟通回复」。台账全量可见。',
- operations:'运营和客服视角：可登记新单，并修改全部业务字段（不含账号管理）。台账全量可见。',
+ outsource:'客服视角：只能修改「售后原因与类型 / 售后内容 / 退款原因 / 沟通回复」。台账全量可见。',
+ operations:'运营视角：可登记新单，并修改全部业务字段（不含账号管理）。台账全量可见。',
+ qqbot:'QQ群机器人视角：可代客登记新单、上传凭证、沟通回复；不改责任判定与结算口径。台账全量可见。',
 };
 function renderScope(){
  const el=$('viewScope');if(!el)return;
@@ -656,6 +666,7 @@ async function loadAll(){
    $('dupAlert').innerHTML=dups.length?`<div class="alert a-warn">⚠ 检出 ${dups.length} 组疑似重复申报，请先完成弹窗中的核对处理。</div>`:'';
    showDuplicateReview(dups);
    await refreshManualPending();
+   loadTodoBadge();
   }catch(e){toast('加载失败：'+e.message)}finally{busy=false}
 }
 function showDuplicateReview(groups){
@@ -822,7 +833,7 @@ function t0(){
   <td data-col="status">${stTag(e.status)}</td><td data-col="age">${ageCell(e)}</td>
   <td data-col="return">${returnTag(e)}</td>
   <td data-col="stockin">${sk.found?`<span class="badge ${sk.is_defective?'b-red':'b-gray'}" title="${esc(sk.warehouse)}">${sk.is_defective?'次品仓':'已入库'}</span>`:'<span style="color:var(--text-soft)">未查</span>'}</td>
-  <td data-col="detail" class="t">${e.missing_fields?.length?(ME.is_admin?`<button class="btn sm" onclick="openManualPending('${e.code}')">人工补齐</button> `:'<span class="badge b-amber">待补齐</span> '):(e.manual_import&&!e.manual_import.wdt_verified?'<span class="badge b-amber" title="人工信息已齐全，旺店通尚未核验；不影响人工补齐完成状态">人工已补齐</span> ':'')}<button class="btn sm" onclick="openDetail('${e.code}')">详情</button></td></tr>`;
+  <td data-col="detail" class="t">${amountAnomaly(e)?`<span class="badge b-red" title="${esc(amountAnomaly(e))}，请核对金额">金额异常</span> `:''}${e.missing_fields?.length?(ME.is_admin?`<button class="btn sm" onclick="openManualPending('${e.code}')">人工补齐</button> `:'<span class="badge b-amber">待补齐</span> '):(e.manual_import&&!e.manual_import.wdt_verified?'<span class="badge b-amber" title="人工信息已齐全，旺店通尚未核验；不影响人工补齐完成状态">人工已补齐</span> ':'')}<button class="btn sm" onclick="openDetail('${e.code}')">详情</button></td></tr>`;
  }).join('');
  const heads=TABLE_COLUMNS.map(([key,label,,group])=>`<th data-col="${key}" class="head-${group}" style="${group==='money'?'text-align:right':''}">${label}</th>`).join('');
  const groupHeads=Object.entries(TABLE_GROUPS).map(([key,label])=>`<th colspan="${TABLE_COLUMNS.filter(c=>c[3]===key).length}" class="head-${key}">${label}</th>`).join('');
@@ -965,7 +976,7 @@ function applyNewPerms(){
  Object.entries(NEW_FIELD).forEach(([id,field])=>{
   const el=$(id);if(!el||canWrite(field))return;
   el.disabled=true;el.removeAttribute('required');el.setAttribute('aria-required','false');
-  if(id==='n_claim'){el.placeholder='由运营和客服填写（本渠道不填）';el.value=''}
+  if(id==='n_claim'){el.placeholder='由运营填写（本渠道不填）';el.value=''}
   const lbl=el.closest('.fld')&&el.closest('.fld').querySelector('label');
   if(lbl&&id==='n_claim')lbl.insertAdjacentHTML('beforeend',' <span style="color:var(--text-soft)">· 由运营填写</span>');
  });
@@ -1278,6 +1289,7 @@ async function openDetail(code,skipAuto){
   </div>
   <div class="fld"><label>售后内容 / 争议问题</label><textarea class="inp" id="d_claim_txt" rows="2">${esc(e.customer_claim)}</textarea></div>
   <div class="fld" style="margin-top:9px"><label>判定依据</label><textarea class="inp" id="d_basis" rows="2" placeholder="说明争议点、各方反馈和依据">${esc(e.duty_basis)}</textarea></div>
+  <div class="fld" style="margin-top:9px"><label>备注 <span style="color:var(--text-soft)">· 机器人登记的口径说明也写在这里</span></label><textarea class="inp" id="d_note" rows="3" placeholder="例如：原单退回·待核验（拦截）、客户提及责任方待仓库判定、未填赔付金额待补">${esc(e.note||'')}</textarea></div>
   <div class="communication-block"><h4>双方沟通记录</h4><div class="communication-log">${replies}</div>
    <div class="communication-compose">
     <select class="inp" id="r_src"><option value="owner">商家说明</option><option value="warehouse">仓库回复</option></select>
@@ -1329,7 +1341,7 @@ async function openDetail(code,skipAuto){
 }
 
 // 详情弹层字段 → 后端字段名：按渠道把无权编辑的控件禁用（后端同样会拦，这里只做提示）。
-const DETAIL_FIELD={d_date:'event_date',d_tid:'wdt_tid',d_carrier:'ship_carrier',d_lno:'ship_logistics_no',d_refund:'refund_amount',d_claim:'claim_amount',d_received:'received_amount',d_pref:'warehouse_ref',d_type:'incident_type',d_after_type:'after_sales_type',d_duty:'duty_party',d_duty_custom:'duty_party_custom',d_status:'status',d_claim_txt:'customer_claim',d_basis:'duty_basis'};
+const DETAIL_FIELD={d_date:'event_date',d_tid:'wdt_tid',d_carrier:'ship_carrier',d_lno:'ship_logistics_no',d_refund:'refund_amount',d_claim:'claim_amount',d_received:'received_amount',d_pref:'warehouse_ref',d_type:'incident_type',d_after_type:'after_sales_type',d_duty:'duty_party',d_duty_custom:'duty_party_custom',d_status:'status',d_claim_txt:'customer_claim',d_basis:'duty_basis',d_note:'note'};
 function applyDetailPerms(){
  const modal=$('modal');if(!modal)return;
  const saveBtn=modal.querySelector('.detail-footer .btn.pri');if(saveBtn&&!ME.can_write)saveBtn.style.display='none';
@@ -1400,7 +1412,7 @@ async function saveDetail(code){
  const body={...(v('d_date')!==$('d_date').dataset.initialValue?{event_date:v('d_date')}:{}),wdt_tid:v('d_tid'),ship_carrier:v('d_carrier'),
   ship_logistics_no:v('d_lno'),incident_type:v('d_type'),after_sales_type:v('d_after_type'),duty_party:v('d_duty'),duty_party_custom:v('d_duty_custom'),
   refund_amount:v('d_refund'),...(v('d_claim')===''&&CUR.claim_amount_known===false?{}:{claim_amount:v('d_claim')}),received_amount:v('d_received'),
-  status:v('d_status'),warehouse_ref:v('d_pref'),customer_claim:v('d_claim_txt'),duty_basis:v('d_basis')};
+  status:v('d_status'),warehouse_ref:v('d_pref'),customer_claim:v('d_claim_txt'),duty_basis:v('d_basis'),note:v('d_note')};
  Object.keys(body).forEach(k=>{if(!canWrite(k))delete body[k]});
  if(!Object.keys(body).length){toast('当前账号没有可修改的字段，请联系管理员调整渠道');return}
  try{await api('/api/events/'+encodeURIComponent(code),{method:'PUT',headers:{'Content-Type':'application/json'},
@@ -1519,10 +1531,47 @@ async function wdtTest(){
 }
 function closeM(){hideEvidenceHover();closeEvidenceViewer();lookupSequence++;clearTimeout(lookupTimer);clearTimeout(lookupRetryTimer);lookupTimer=null;lookupRetryTimer=null;lookupRetryCount=0;$('mask').classList.remove('on')}
 
+async function openTodo(){
+ let d={counts:{},groups:{}};
+ try{d=await api('/api/todo?limit=50')}catch(e){toast('待办加载失败：'+e.message);return}
+ const LABELS={'待核验':'需人工核对（原单退回=拦截）','待补金额':'申请金额为 0，待补','待定责':'责任方未定，待仓库判定','未入库':'还没查入库检测','待跟进':'已提交仓库但久无进展','金额异常':'索赔/客赔金额互相矛盾，需人工核对'};
+ const secs=Object.keys(d.groups||{}).filter(k=>(d.groups[k]||[]).length).map(k=>{
+   const rows=(d.groups[k]||[]).map(r=>`<tr style="border-top:1px solid var(--border)">
+     <td style="padding:5px 8px"><a class="link mono" href="javascript:;" onclick="closeM();openDetail('${esc(r.code)}')">${esc(r.code)}</a></td>
+     <td style="padding:5px 8px">${esc(r.shop_name||'—')}</td>
+     <td style="padding:5px 8px">${esc(r.wdt_tid||'—')}</td>
+     <td style="padding:5px 8px">${esc(r.after_sales_type==='original_return'?'原单退回':(r.incident_type||''))}</td>
+     <td style="padding:5px 8px">${esc(r.claim_amount||'0.00')}</td>
+     <td style="padding:5px 8px;max-width:260px;overflow:hidden;text-overflow:ellipsis" title="${esc(r.note||'')}">${k==='金额异常'?`<span style="color:var(--danger-text)">${esc(r.anomaly||'')}</span>`:esc(r.note||'')}</td>
+     <td style="padding:5px 8px;text-align:right">${k==='未入库'?`<button class="btn sm" onclick="quickStockin('${esc(r.code)}',this)">查入库</button>`:''}</td></tr>`).join('');
+   return `<section style="margin-top:12px"><h4 style="font-size:13px">${k} <span class="badge b-amber">${(d.groups[k]||[]).length}</span> <span style="font-size:11px;color:var(--text-muted);font-weight:400">${esc(LABELS[k]||'')}</span></h4>
+    <table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead><tr style="color:var(--text-muted);text-align:left"><th style="padding:4px 8px">编号</th><th>店铺</th><th>订单号</th><th>类型</th><th>申请金额</th><th>${k==='金额异常'?'异常原因':'备注'}</th><th></th></tr></thead><tbody>${rows}</tbody></table></section>`;
+ }).join('');
+ const total=d.total??0,items=Object.values(d.counts||{}).reduce((a,b)=>a+b,0);
+ $('modal').innerHTML=`<h2>待办清单　<span style="font-size:12px;color:var(--text-muted);font-weight:400">共 ${total} 个事件待处理${items>total?`（按 ${items} 项待办计）`:''}</span></h2>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">${Object.entries(d.counts||{}).map(([k,v])=>`<span class="badge ${v?'b-amber':'b-gray'}">${k} ${v}</span>`).join('')}</div>
+  ${secs||'<div style="color:var(--text-muted);padding:10px 0">暂无待办事项 🎉</div>'}
+  <div style="margin-top:14px;text-align:right"><button class="btn" onclick="closeM()">关闭</button></div>`;
+ $('mask').classList.add('on');
+}
+async function quickStockin(code,btn){
+ if(btn){btn.disabled=true;btn.textContent='查询中…'}
+ try{
+  const r=await api('/api/events/'+encodeURIComponent(code)+'/check-stockin',{method:'POST'});
+  const sk=(r.event&&r.event.stockin)||{};
+  toast(r.found?('已入库：'+(sk.warehouse||'')+(sk.is_defective?'（次品仓）':'')):('未匹配到入库记录'));
+  await loadAll();
+ }catch(e){toast('入库检测失败：'+e.message)}
+ finally{if(btn){btn.disabled=false;btn.textContent='查入库'}}
+}
+async function loadTodoBadge(){
+ try{const d=await api('/api/todo?limit=1');const t=d.total??0;
+  const el=$('todoBadge');if(el)el.textContent=t?`(${t})`:'';}catch(e){}
+}
 async function openUsers(){
  let list={rows:[],channels:[],roles:[]};
  try{list=await api('/api/users')}catch(e){toast('无权限或加载失败：'+e.message);return}
- const chans=list.channels&&list.channels.length?list.channels:[{value:'warehouse',label:'仓库'},{value:'outsource',label:'外包客服'},{value:'operations',label:'运营和客服'}];
+ const chans=list.channels&&list.channels.length?list.channels:[{value:'warehouse',label:'仓库'},{value:'outsource',label:'客服'},{value:'operations',label:'运营'},{value:'qqbot',label:'QQ群机器人'}];
  const roles=list.roles&&list.roles.length?list.roles:[{value:'admin',label:'管理员'},{value:'editor',label:'编辑'},{value:'viewer',label:'只读'}];
  const opt=(arr,cur)=>arr.map(x=>`<option value="${x.value}" ${cur===x.value?'selected':''}>${x.label}</option>`).join('');
  const rows=list.rows.map(u=>`<tr style="border-top:1px solid var(--border)">
@@ -1537,10 +1586,11 @@ async function openUsers(){
    </td></tr>`).join('')||'<tr><td colspan="5" style="padding:8px;color:var(--text-muted)">暂无其他账号</td></tr>';
  const html=`<div style="width:820px;max-width:95vw">
   <div style="font-size:15px;font-weight:600;margin-bottom:4px">账号管理</div>
-  <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px">账号可用「用户名」或「邮箱」登录。权限 = 角色（能做什么）× 渠道（能改哪些字段）。三个渠道都能查看全部数据，只是各自只能改自己负责的字段：<br>
+  <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px">账号可用「用户名」或「邮箱」登录。权限 = 角色（能做什么）× 渠道（能改哪些字段）。各渠道都能查看全部数据，只是各自只能改自己负责的字段：<br>
    · 仓库：入库检测、责任判定、仓库工单号、实收金额、状态<br>
-   · 外包客服：售后原因/类型、售后内容、退款原因、沟通记录<br>
-   · 运营和客服：登记新单 + 全部业务字段（含赔付金额）</div>
+   · 客服：登记新单 + 售后原因/类型、售后内容、退款原因、沟通记录<br>
+   · 运营：登记新单 + 全部业务字段（含赔付金额）<br>
+   · QQ群机器人：登记新单 + 上传凭证 + 沟通回复（不改责任判定与结算口径）</div>
   <table style="width:100%;border-collapse:collapse;font-size:12.5px">
    <thead><tr style="color:var(--text-muted);text-align:left">
     <th style="padding:6px 8px">账号</th><th>显示名</th><th>渠道</th><th>角色</th><th style="text-align:right">操作</th></tr></thead>

@@ -23,5 +23,11 @@ echo "[5/5] 冒烟"
 sleep 6
 curl -sf -o /dev/null http://127.0.0.1:8021/ && echo "  首页 OK" || { echo "  首页 FAIL"; exit 1; }
 curl -sf http://127.0.0.1:8021/healthz > /dev/null && echo "  healthz OK" || { echo "  healthz FAIL"; exit 1; }
-curl -sf -H "Authorization: Bearer dev" http://127.0.0.1:8021/api/page-version > /dev/null && echo "  page-version OK" || { echo "  page-version FAIL"; exit 1; }
+set -a; . ./.env; set +a
+TOKEN=$(curl -s -X POST http://127.0.0.1:8021/api/login -H 'Content-Type: application/json' \
+  -d "{\"email\":\"$ADMIN_EMAIL\",\"password\":\"$ADMIN_PASSWORD\"}" \
+  | python3 -c 'import sys,json;print(json.load(sys.stdin).get("token",""))')
+[ -n "$TOKEN" ] && echo "  管理员登录 OK" || { echo "  管理员登录 FAIL"; exit 1; }
+curl -sf -H "Authorization: Bearer $TOKEN" http://127.0.0.1:8021/api/page-version > /dev/null && echo "  page-version OK" || { echo "  page-version FAIL"; exit 1; }
+curl -sf -H "Authorization: Bearer $TOKEN" http://127.0.0.1:8021/api/me > /dev/null && echo "  me OK" || { echo "  me FAIL"; exit 1; }
 echo "部署完成 ✓（备份保留在 backups/deploy-$TS/）"

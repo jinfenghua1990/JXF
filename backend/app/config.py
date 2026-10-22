@@ -1,6 +1,8 @@
 """运行配置。"""
 from __future__ import annotations
 
+import hmac
+
 from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -54,9 +56,27 @@ class Settings(BaseSettings):
     # 仅供本地开发调试使用；生产 / 外网部署务必保持 false（或删除本行）。
     disable_auth: bool = False
 
+    # 机器凭证：机器人调用售后登记接口用（不需要账号+密码）。
+    # 格式：渠道=密钥，多个用逗号分隔，例如 qqbot=xxxxxxxx
+    bot_api_keys: str = ""
+
     # 企业微信 bot 调用建单接口用的共享令牌（与 bot 侧 WECOM_BOT_TOKEN 一致）。
     # 留空时若 disable_auth=true（开发期）则放行；生产必须为非空，否则拒绝建单。
     wecom_bot_token: str = ""
+
+    def bot_channel_for_key(self, key: str) -> str:
+        """按机器凭证反查所属渠道；不匹配返回空串。"""
+        want = (key or "").strip()
+        if not want:
+            return ""
+        for item in (self.bot_api_keys or "").split(","):
+            if "=" not in item:
+                continue
+            ch, k = item.split("=", 1)
+            k = k.strip()
+            if k and hmac.compare_digest(k, want):
+                return ch.strip()
+        return ""
 
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=False, extra="ignore")
 

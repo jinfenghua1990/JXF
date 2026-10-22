@@ -104,16 +104,24 @@ def verify_token(token: Optional[str]) -> Optional[str]:
 # ---------------------------------------------------------------- 依赖
 
 
-def require_auth(authorization: str = Header(default="")) -> str:
-    """登录即可用的依赖；返回当前账号邮箱。"""
+def require_auth(authorization: str = Header(default=""),
+                 x_bot_key: str = Header(default="")) -> str:
+    """登录即可用的依赖。
+
+    返回当前账号邮箱；机器凭证（X-Bot-Key）返回 "bot-key:<渠道>"。
+    """
     if settings.disable_auth:
         # 开发期免登录：跳过 token 校验，直接返回开发身份。
         return _dev_identity()
     token = authorization[7:].strip() if authorization.startswith("Bearer ") else ""
     email = verify_token(token)
-    if not email:
-        raise HTTPException(401, "未登录或登录已过期，请重新登录")
-    return email
+    if email:
+        return email
+    # 机器凭证：机器人无需账号密码，凭 X-Bot-Key 直接按渠道鉴权
+    ch = settings.bot_channel_for_key(x_bot_key)
+    if ch:
+        return f"bot-key:{ch}"
+    raise HTTPException(401, "未登录或登录已过期，请重新登录")
 
 
 def require_admin(authorization: str = Header(default="")) -> User:

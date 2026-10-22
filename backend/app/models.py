@@ -364,13 +364,14 @@ class AuditLog(Base):
 class Channel(str, enum.Enum):
     """渠道方：决定这个账号「能改哪些字段」，不决定能看哪些数据。
 
-    三个渠道都看全量台账（仓库要核对入库、客服要跟进回复），
+    各渠道都看全量台账（仓库要核对入库、客服要跟进回复），
     区别只在「谁负责填什么」，避免互相覆盖对方的口径。
     """
 
     WAREHOUSE = "warehouse"      # 仓库：入库检测、责任判定、仓库工单号、实收
-    OUTSOURCE = "outsource"      # 外包客服：售后原因/类型、售后内容、回复
-    OPERATIONS = "operations"    # 运营和客服：登记、金额、状态、店铺信息
+    OUTSOURCE = "outsource"      # 客服：售后原因/类型、售后内容、回复
+    OPERATIONS = "operations"    # 运营：登记、金额、状态、店铺信息
+    QQBOT = "qqbot"              # QQ群机器人：代客登记、凭证上传、沟通回复
 
 
 class Role(str, enum.Enum):
@@ -381,7 +382,10 @@ class Role(str, enum.Enum):
     VIEWER = "viewer"            # 只读 + 导出
 
 
-CHANNEL_LABEL = {"warehouse": "仓库", "outsource": "外包客服", "operations": "运营和客服"}
+CHANNEL_LABEL = {"warehouse": "仓库", "outsource": "客服", "operations": "运营",
+                 "qqbot": "QQ群机器人"}
+# 机器凭证登录时展示的登记人名（后台「登记人」列）
+BOT_DISPLAY_NAME = {"qqbot": "QQ机器人"}
 ROLE_LABEL = {"admin": "管理员", "editor": "编辑", "viewer": "只读"}
 
 # 各渠道可写的字段。未列出的字段对该渠道只读，后端强制拦截，前端置灰。
@@ -391,16 +395,26 @@ CHANNEL_WRITABLE_FIELDS: dict[str, set[str]] = {
         "warehouse_ref", "duty_party", "duty_party_custom", "duty_basis",
         "received_amount", "stockin", "status", "closed", "note",
     },
+    # 客服：登记 + 售后原因/类型 + 内容 + 退款原因 + 客户索赔金额 + 沟通回复
+    # 不含：责任判定（仓库口径）、实收/未收回（结算口径）、入库检测
     "outsource": {
-        "event_date", "wdt_tid", "ship_carrier", "ship_logistics_no",
+        "event_date", "wdt_tid", "ship_carrier", "ship_logistics_no", "shop_name",
         "incident_type", "after_sales_type", "customer_claim", "refund_reason",
-        "note", "status",
+        "claim_amount", "note", "status",
     },
+    # 运营：登记新单 + 全部业务字段（不含账号管理）
     "operations": {
         "event_date", "wdt_tid", "ship_carrier", "ship_logistics_no", "shop_name",
         "refund_amount", "refund_reason", "incident_type", "after_sales_type",
         "customer_claim", "duty_party", "duty_party_custom", "duty_basis",
         "claim_amount", "received_amount", "status", "warehouse_ref", "note", "closed",
+    },
+    # QQ群机器人：代客登记 + 上传凭证 + 沟通回复 + 客户口述的责任方
+    # 不碰结算与核验口径（实收/未收回/净损失/入库/仓库工单号/关闭/判定依据）
+    "qqbot": {
+        "event_date", "wdt_tid", "ship_carrier", "ship_logistics_no", "shop_name",
+        "incident_type", "after_sales_type", "customer_claim", "duty_party",
+        "refund_reason", "claim_amount", "note", "status",
     },
 }
 # 管理员不受渠道字段限制（但仍受角色限制：只有 admin 才能管账号）。
@@ -408,7 +422,7 @@ ALL_FIELDS = "*"
 
 # 允许「登记新售后」的渠道：运营和客服负责建单，外包客服可代客登记，
 # 仓库方只在已有登记上回复/补入库，不建单。空串（历史账号）按不受限处理。
-CAN_CREATE_CHANNELS = {"operations", "outsource"}
+CAN_CREATE_CHANNELS = {"operations", "outsource", "qqbot"}
 
 # 需要「编辑」及以上角色才能执行的动作。
 WRITE_ACTIONS = {"create", "update", "delete", "reply", "duty", "sync", "import", "evidence"}

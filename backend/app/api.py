@@ -96,6 +96,11 @@ from .services.frontend import frontend_version, page_ready, record_ready
 router = APIRouter(prefix="/api", dependencies=[Depends(require_auth)])
 open_router = APIRouter(prefix="/api")
 
+# 程序化登记（机器人）声明的登记人代号 -> 显示名
+REGISTRAR_LABELS = {
+    "qq-bot": "QQ机器人",
+    "wecom-bot": "微信客服机器人",
+}
 INCIDENT_ALIAS: dict[str, IncidentType] = {
     "破损": IncidentType.DAMAGE, "damage": IncidentType.DAMAGE,
     "丢件": IncidentType.LOSS, "丢失": IncidentType.LOSS, "loss": IncidentType.LOSS,
@@ -733,6 +738,89 @@ def duplicate_groups(db: Session = Depends(get_db)):
     return {"groups": find_duplicates(db)}
 
 
+@router.get("/todo")
+def todo(db: Session = Depends(get_db), limit: int = Query(default=50, ge=1, le=300),
+         follow_days: int = Query(default=3, ge=1, le=60)):
+    """待办清单：待核验（拦截/退回类）/ 待补金额 / 待定责 / 未入库 / 待跟进。"""
+    closed = [ClaimStatus.PAID, ClaimStatus.REJECTED, ClaimStatus.GAVE_UP]
+    evs = list(db.scalars(
+        select(ClaimEvent)
+        .where(ClaimEvent.status.notin_(closed))
+        .order_by(ClaimEvent.event_date.desc(), ClaimEvent.id.desc())
+    ).unique().all())
+
+    def row(ev: ClaimEvent) -> dict:
+        # 金额异常：索赔高于订单、客赔高于订单、实收高于索赔，均需人工核对
+        order_amt = float(ev.order_amount or 0)
+        claim_amt = float(ev.claim_amount or 0)
+        refund_amt = float(ev.refund_amount or 0)
+        received_amt = float(ev.received_amount or 0)
+        anomaly = ""
+        if order_amt > 0 and claim_amt > order_amt:
+            anomaly = f"索赔 {claim_amt:.2f} > 订单 {order_amt:.2f}"
+        elif order_amt > 0 and refund_amt > order_amt:
+            anomaly = f"客赔 {refund_amt:.2f} > 订单 {order_amt:.2f}"
+        elif claim_amt > 0 and received_amt > claim_amt:
+            anomaly = f"实收 {received_amt:.2f} > 索赔 {claim_amt:.2f}"
+        return {
+            "code": ev.code,
+            "wdt_tid": ev.wdt_tid or "",
+            "ship_logistics_no": ev.ship_logistics_no or "",
+            "shop_name": ev.shop_name or "",
+            "event_date": ev.event_date.isoformat() if ev.event_date else "",
+            "status": ev.status.value,
+            "incident_type": ev.incident_type.value if ev.incident_type else "",
+            "after_sales_type": ev.after_sales_type.value if ev.after_sales_type else "",
+            "duty_party": ev.duty_party.value if ev.duty_party else "",
+            "claim_amount": f"{ev.claim_amount:.2f}",
+            "order_amount": f"{ev.order_amount:.2f}",
+            "refund_amount": f"{ev.refund_amount:.2f}",
+            "anomaly": anomaly,
+            "stockin_found": bool(ev.stockin_found),
+            "stockin_checked_at": ev.stockin_checked_at.isoformat(timespec="minutes") if ev.stockin_checked_at else "",
+            "created_by": ev.created_by or "",
+            "note": (ev.note or "")[:200],
+            "updated_at": ev.updated_at.isoformat(timespec="minutes") if ev.updated_at else "",
+        }
+
+    groups: dict[str, list[dict]] = {
+        "待核验": [],      # 原单退回 = 拦截：需人工核对退回商品与入库凭证
+        "待补金额": [],    # 申请金额为 0，等运营/客服补
+        "待定责": [],      # 责任方未定，等仓库判定
+        "未入库": [],      # 还没查过入库
+        "待跟进": [],      # 已提交仓库但好几天没动静
+        "金额异常": [],    # 索赔/客赔/实收金额互相矛盾，需人工核对
+    }
+    cutoff = datetime.now() - timedelta(days=follow_days)
+    for ev in evs:
+        r = row(ev)
+        if ev.after_sales_type and ev.after_sales_type.value == "original_return":
+            groups["待核验"].append(r)
+        if ev.claim_amount is not None and float(ev.claim_amount) == 0:
+            groups["待补金额"].append(r)
+        if ev.duty_party and ev.duty_party.value == "undecided":
+            groups["待定责"].append(r)
+        # 未入库：只盯退回类（原单退回/退回退款/仅退回）——
+        # 这类必须拿到入库凭证才能核验，其它单没查过入库不算待办
+        if (not ev.stockin_checked_at and ev.after_sales_type
+                and ev.after_sales_type.value in ("original_return", "return_refund", "return_only")):
+            groups["未入库"].append(r)
+        if ev.status == ClaimStatus.SUBMITTED and ev.updated_at and ev.updated_at < cutoff:
+            groups["待跟进"].append(r)
+        if r["anomaly"]:
+            groups["金额异常"].append(r)
+    counts = {k: len(v) for k, v in groups.items()}
+    trimmed = {k: v[:limit] for k, v in groups.items()}
+    # 一个事件可同时落进多个分组，总数必须按事件去重，否则角标会虚高
+    unique_codes = {r["code"] for v in groups.values() for r in v}
+    return {
+        "counts": counts,
+        "groups": trimmed,
+        "total": len(unique_codes),
+        "total_items": sum(counts.values()),
+    }
+
+
 @router.post("/duplicates/review")
 def review_duplicate(payload: DuplicateReviewIn, ident: Identity = Depends(require_editor),
                      db: Session = Depends(get_db)):
@@ -842,7 +930,9 @@ def global_audit(db: Session = Depends(get_db), limit: int = Query(default=200))
 
 
 @router.post("/events")
-def create_event(payload: EventIn, ident: Identity = Depends(require_editor), db: Session = Depends(get_db)):
+def create_event(payload: EventIn, ident: Identity = Depends(require_editor),
+                 db: Session = Depends(get_db),
+                 registrar: str = Header(default="", alias="X-Registrar")):
     actor = ident.email
     if not ident.can_create:
         raise HTTPException(
@@ -912,7 +1002,13 @@ def create_event(payload: EventIn, ident: Identity = Depends(require_editor), db
     ev = ClaimEvent(code=code, event_date=d, event_time=event_time,
                     order_amount=_dec_wdt(shipment.get("goods_total_amount") or shipment.get("goods_amount") or 0))
     # 登记人维度：谁建的单、属于哪个渠道，报表按此拆分（历史记录为空→展示「历史导入」）。
-    ev.created_by = ident.email
+    # 登记人：程序化登记（机器人）可用 X-Registrar 声明显示名；
+    # 否则用账号显示名，再回落到登录邮箱
+    _reg = ""
+    if ident.dev_mode or ident.is_admin:
+        _reg = (registrar or "").strip()[:64]
+        _reg = REGISTRAR_LABELS.get(_reg.lower(), _reg)
+    ev.created_by = _reg or ident.display_name or ident.email
     ev.created_channel = ident.channel
     _fill(ev, payload, creating=True)
     _apply_shipment(ev, shipment)

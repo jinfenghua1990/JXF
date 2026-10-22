@@ -19,6 +19,7 @@ from fastapi import Depends, HTTPException
 from ..config import settings
 from ..models import (
     ALL_FIELDS,
+    BOT_DISPLAY_NAME,
     CAN_CREATE_CHANNELS,
     CHANNEL_LABEL,
     CHANNEL_WRITABLE_FIELDS,
@@ -122,6 +123,11 @@ def current_identity(email: str = Depends(require_auth)) -> Identity:
     if settings.disable_auth:
         # 开发模式视同管理员，但渠道留空（不受字段限制），保持调试方便。
         return Identity(email=email, role=Role.ADMIN.value, dev_mode=True)
+    if email.startswith("bot-key:"):
+        # 机器凭证：按渠道给编辑权限，登记人显示为机器人名
+        ch = email.split(":", 1)[1].strip()
+        return Identity(email=f"{ch}@bot.local", role=Role.EDITOR.value, channel=ch,
+                       display_name=BOT_DISPLAY_NAME.get(ch, "机器人"))
     from ..database import SessionLocal
     from sqlalchemy import select
 
